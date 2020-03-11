@@ -1,0 +1,13 @@
+name: dragenwgs_post_processing
+channels:
+- bioconda
+- r
+dependencies:
+- python = 3.7
+- vt = 2015.11.10
+- vcftools = 0.1.16
+- ensembl-vep = 94.5
+- bcftools = 1.9
+- nextflow = 19
+- pip:
+  - pandas== 0.23.4
