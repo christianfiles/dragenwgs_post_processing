@@ -1,6 +1,8 @@
 work/
 results/
 data/
+data_old/
 .nextflow/
 .nextflow.log*
 .ipynb_checkpoints*
+.DS_Store

@@ -3,6 +3,10 @@
 from pysam import VariantFile
 import argparse
 
+"""
+Script to apply filters to WGS data - requires a VCF with only one sample. This is to be done before upload to Qiagen
+
+"""
 
 
 parser = argparse.ArgumentParser(description='Perform quality filtering on single sample vcfs before we upload to Qiagen')
@@ -38,7 +42,7 @@ myvcf = VariantFile(vcf, "r")
 myvcf.header.filters.add('LowAFMT', None, None, f'An MT variant with AF below {min_mt_af}')
 myvcf.header.filters.add('SNPQual', None, None, f'An SNP variant with QUAL below {snp_qual}')
 myvcf.header.filters.add('IndelQual', None, None, f'An Indel variant with QUAL below {indel_qual}')
-myvcf.header.filters.add('LowDP', None, None, f'A non MT variant with DP below {min_dp}')
+myvcf.header.filters.add('LowDepth', None, None, f'A non MT variant with DP below {min_dp}')
 myvcf.header.filters.add('LowGQ', None, None, f'A non MT variant with GQ below {min_gq}')
 myvcf.header.filters.add('lod_fstar', None, None, f'MT LOD is below default')
 myvcf.header.filters.add('DRAGENHardQUAL', None, None, f'Default Hard Filter Applied to Genotypes by Dragen')
@@ -52,34 +56,53 @@ for variant in myvcf:
 	alt = variant.alts
 	qual = variant.qual
 
+	# deal with MT variants seperately
 	if chrom == 'MT':
 
 		filters_to_add = []
 
+		# clear existing filters
 		variant.filter.clear()
 
 		ft = variant.samples[sampleid]['FT']
 		af  = variant.samples[sampleid]['AF']
 
+		# if it is multiallelic loop through and check if any are over the threshold
 		if len(af) >1:
 
-			print(variant)
-			continue
+			passes = False
 
-		af = af[0]
+			for a in af:
 
-		if af < min_mt_af:
+				# if so it passes and we don't add the filter
+				if a > min_mt_af:
 
-			filters_to_add.append('LowAFMT')
+					passes = True
+					break
 
+			if passes == False:
+
+				filters_to_add.append('LowAFMT')
+
+		else:
+
+			af = af[0]
+
+			if af < min_mt_af:
+
+				filters_to_add.append('LowAFMT')
+
+		# add any existing filters added by Dragen
 		if ft != 'PASS':
 
 			filters_to_add.append(ft)
 
+		# if we don't have any filters to add set to pass
 		if len(filters_to_add) == 0 and ft == 'PASS':
 
 			variant.filter.add('PASS')
 
+		# otherwise apply the filters
 		else:
 
 			for filt in filters_to_add:
@@ -88,8 +111,8 @@ for variant in myvcf:
 
 	else:
 
+		# clear existing filters
 		variant.filter.clear()
-
 		filters_to_add = []
 
 		try:
@@ -98,8 +121,7 @@ for variant in myvcf:
 
 		except:
 
-			print (variant)
-			continue
+			gq = 0
 
 		if gq == None:
 
@@ -111,14 +133,13 @@ for variant in myvcf:
 
 		except:
 
-			print (variant)
-			continue
+			dp =0
 
 		if dp == None:
 
 			dp = 0
 
-
+		# deal with snps and non snps differently
 		is_snp = True
 
 		if len(ref) > 1:
@@ -145,15 +166,16 @@ for variant in myvcf:
 				filters_to_add.append('IndelQual')
 
 		# filter dp
-
 		if dp < min_dp:
 
-			filters_to_add.append('LowDP')
+			filters_to_add.append('LowDepth')
 
+		# filter gq
 		if gq < min_gq:
 
 			filters_to_add.append('LowGQ')
 
+		# if no filters then add pass
 		if len(filters_to_add) == 0:
 
 			variant.filter.add('PASS')

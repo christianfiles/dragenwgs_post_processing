@@ -50,7 +50,7 @@ Main pipeline
 */
 
 
-/*
+
 // split multiallelics and normalise
 process split_multiallelics_and_normalise{
 
@@ -71,6 +71,14 @@ process split_multiallelics_and_normalise{
 
 }
 
+
+normalised_vcf_channel.into{
+    for_vep_channel
+    qiagen_vcf_channel
+}
+
+/*
+
 // Annotate using VEP
 process annotate_with_vep{
 
@@ -79,7 +87,7 @@ process annotate_with_vep{
     publishDir "${params.publish_dir}/annotated_vcf/", mode: 'copy'
 
     input:
-    file(normalised_vcf) from normalised_vcf_channel
+    set file(normalised_vcf), file(normalised_vcf_index) from for_vep_channel
 
     output:
     set file("${params.sequencing_run}.norm.anno.vcf.gz"), file("${params.sequencing_run}.norm.anno.vcf.gz.tbi")  into annotated_vcf
@@ -207,10 +215,8 @@ process split_multisample_vcfs {
 
     cpus params.small_task_cpus
 
-
-
     input:
-    set val(id), file(vcf), file(vcf_index) from raw_vcf_cip
+    set val(id), file(vcf), file(vcf_index) from qiagen_vcf_channel
     each sample_names from samples_ch
 
     output:
