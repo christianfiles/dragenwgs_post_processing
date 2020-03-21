@@ -13,7 +13,6 @@ Define initial files
 */
 
 reference_genome = file(params.reference_genome)
-sequence_dict = file(params.sequence_dict)
 gnomad_exomes = file(params.gnomad_exomes)
 gnomad_genomes = file(params.gnomad_genomes)
 vep_cache = file(params.vep_cache)
@@ -57,15 +56,15 @@ process split_multiallelics_and_normalise{
     cpus params.vcf_processing_cpus
 
 	input:
-	set file(vcf), file(vcf_index) from raw_vcf_annotation 
+	set val(id), file(vcf), file(vcf_index) from raw_vcf_annotation 
 
 	output:
-	set file("${params.sequencing_run}.norm.vcf.gz"), file("${params.sequencing_run}.norm.vcf.gz.tbi") into normalised_vcf_channel
+	set val(id), file("${params.sequencing_run}.norm.vcf.gz"), file("${params.sequencing_run}.norm.vcf.gz.tbi") into normalised_vcf_channel
 
 	"""
-	zcat $vcf | vt decompose -s - | vt normalize -r $reference_genome - > ${params.sequencing_run}.roi.filtered.norm.vcf
-	bgzip ${params.sequencing_run}.roi.filtered.norm.vcf
-	tabix ${params.sequencing_run}.roi.filtered.norm.vcf.gz
+	zcat  < $vcf | vt decompose -s - | vt normalize -r $reference_genome - > ${params.sequencing_run}.norm.vcf
+	bgzip ${params.sequencing_run}.norm.vcf
+	tabix ${params.sequencing_run}.norm.vcf.gz
 
 	"""
 
