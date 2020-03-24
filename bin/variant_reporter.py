@@ -27,6 +27,7 @@ parser.add_argument('--min_gq', type=int, nargs=1, required=True,
 				help='min gq for variants')
 parser.add_argument('--min_af_mt', type=float, nargs=1, required=True,
 				help='min af for MT variants')
+parser.add_argument('--output', type=str, nargs=1, required=True, help='output name')
 
 args = parser.parse_args()
 
@@ -41,14 +42,14 @@ minqual_indels = args.minqual_indels[0]
 min_dp = args.min_dp[0]
 min_gq = args.min_gq[0]
 min_af_mt = args.min_af_mt[0]
-
+output_name = args.output[0]
 
 initial_af = max(gnomad_ad, gnomad_r)
 
 
 # define a few functions to help
 
-def passes_initial_filter(variant, proband_id):
+def passes_initial_filter(variant, proband_id, gene_dict):
 	"""
 	Filter variants from the VCF.
 	
@@ -58,13 +59,16 @@ def passes_initial_filter(variant, proband_id):
 	c) Has a a relevant consequence
 	
 	"""
+
+
+
+
 	# If the proband has the variant and we pass the genotype and variant level filters
 	if variant.has_alt(proband_id) and variant.passes_gt_filter(proband_id, min_gq=min_gq):
 
 		if variant.chrom == 'MT':
 
-			af = variant.info['AF']
-			print(af)
+			af = variant.info_annotations
 
 		else:
 
@@ -107,7 +111,17 @@ def passes_initial_filter(variant, proband_id):
 																						  mt=initial_af,
 																						  )  
 		
-		
+		genes = variant.get_genes(feature_key='SYMBOL')
+
+		in_panel = False
+
+		for gene in genes:
+
+			if gene in gene_dict:
+
+				in_panel = True
+				break
+
 		# Coopt the get_genes() function to get the clinvar annotation VEP field.
 		clinvar = variant.get_genes(feature_key='CLIN_SIG')
 		is_path_in_clinvar = False
@@ -119,7 +133,7 @@ def passes_initial_filter(variant, proband_id):
 				break
 				
 		# If the variant is below 1% and pathogenic in clinvar then import
-		if freq_filterg and freq_filtere and is_path_in_clinvar:
+		if freq_filterg and freq_filtere and is_path_in_clinvar and in_panel:
 			
 			return True
 		
@@ -145,13 +159,13 @@ def passes_initial_filter(variant, proband_id):
 			csq_filter = True
 		
 	   # If the variant is below 1% and has a relevant consequence then import
-		if csq_filter and freq_filterg and freq_filtere:
+		if csq_filter and freq_filterg and freq_filtere and in_panel:
 			
 			return True
 		
 	return False
 
-def passes_final_filter_trio(variant, compound_het_dict, gene_dict , inheritance):
+def passes_final_filter_trio(variant, compound_het_dict , inheritance):
 
 	freq_filterg = variant.filter_on_numerical_transcript_annotation_lte(annotation_key='gnomADg_AF_POPMAX',
 																						  ad_het=gnomad_ad,
@@ -162,6 +176,7 @@ def passes_final_filter_trio(variant, compound_het_dict, gene_dict , inheritance
 																						  compound_het=initial_af,
 																						  y=initial_af,
 																						  mt=initial_af,
+																						  compound_het_dict=compound_het_dict
 																						  )
 	freq_filtere = variant.filter_on_numerical_transcript_annotation_lte(annotation_key='gnomADe_AF_POPMAX',
 																						  ad_het=gnomad_ad,
@@ -172,18 +187,10 @@ def passes_final_filter_trio(variant, compound_het_dict, gene_dict , inheritance
 																						  compound_het=initial_af,
 																						  y=initial_af,
 																						  mt=initial_af,
+																						  compound_het_dict=compound_het_dict
 																						  )  
 
-	genes = variant.get_genes(feature_key='SYMBOL')
 
-	in_panel = False
-
-	for gene in genes:
-
-		if gene in gene_dict:
-
-			in_panel = True
-			break
 
 	# Coopt the get_genes() function to get the clinvar annotation VEP field.
 	clinvar = variant.get_genes(feature_key='CLIN_SIG')
@@ -196,7 +203,7 @@ def passes_final_filter_trio(variant, compound_het_dict, gene_dict , inheritance
 			break
 			
 	# If the variant is below 1% and pathogenic in clinvar then import
-	if freq_filterg and freq_filtere and is_path_in_clinvar and in_panel:
+	if freq_filterg and freq_filtere and is_path_in_clinvar:
 		
 		return True
 
@@ -208,7 +215,7 @@ def passes_final_filter_trio(variant, compound_het_dict, gene_dict , inheritance
 										   min_parental_depth_dn = min_dp,
 										   min_parental_gq_upi = min_gq,
 										   min_parental_depth_upi = min_dp
-										   ) and freq_filterg and freq_filtere and in_panel:
+										   ) and freq_filterg and freq_filtere:
 		
 		return True
 		
@@ -281,7 +288,7 @@ my_variant_set.add_family(my_family)
 my_variant_set.read_variants_from_vcf(vcf,
 									proband_variants_only=True,
 									filter_func=passes_initial_filter,
-									args=(proband_id,))
+									args=(proband_id, gene_dict))
 
 # see whether we can phase comp hets by inheritance
 
@@ -313,7 +320,7 @@ else:
 
 	inheritance = ['uniparental_isodisomy', 'autosomal_dominant', 'autosomal_reccessive','x_reccessive','x_dominant','de_novo', 'compound_het']
 
-my_variant_set.filter_variants(passes_final_filter_trio, args=(my_variant_set.final_compound_hets, gene_dict, inheritance ))
+my_variant_set.filter_variants(passes_final_filter_trio, args=(my_variant_set.final_compound_hets, inheritance ))
 
 
 variant_df = my_variant_set.to_df()
@@ -333,7 +340,7 @@ for fm in my_family.get_all_family_member_ids():
 csv_fields = ['variant_id', 'csq_SYMBOL', 'csq_Feature', 'csq_HGVSc', 'csq_HGVSp', 'csq_CLIN_SIG', 'csq_Existing_variation', 'worst_consequence', 'inheritance_models', 'csq_PICK', 'filter_status', 'csq_gnomADg_AF_POPMAX', 'csq_gnomADe_AF_POPMAX'] + gt_fields
 
 
-variant_df[csv_fields].to_csv('test.csv', index=False)
+variant_df[csv_fields].to_csv(output_name, index=False)
 
 
 
