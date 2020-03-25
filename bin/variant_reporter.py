@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import argparse
 import pandas as pd
 from pyvariantfilter.family import Family
@@ -214,7 +216,7 @@ def passes_final_filter_trio(variant, compound_het_dict , inheritance):
 										   min_parental_gq_dn = min_gq,
 										   min_parental_depth_dn = min_dp,
 										   min_parental_gq_upi = min_gq,
-										   min_parental_depth_upi = min_dp
+										   min_parental_depth_upi = min_dp,
 										   ) and freq_filterg and freq_filtere:
 		
 		return True
@@ -277,6 +279,12 @@ elif has_family == False and is_affected == True:
 
 	my_family.set_proband(proband.get_id())
 
+else:
+
+	# make empty file
+	exit()
+
+
 
 # Create a new VariantSet object
 my_variant_set = VariantSet()
@@ -293,6 +301,8 @@ my_variant_set.read_variants_from_vcf(vcf,
 # see whether we can phase comp hets by inheritance
 
 if my_variant_set.family.proband_has_both_parents() == True:
+
+	print('Trio Found')
 	
 	# Create an attribute my_variant_set.candidate_compound_het_dict where each transcript is a key the variants 
 	# within that transcript are the values
@@ -310,6 +320,7 @@ if my_variant_set.family.proband_has_both_parents() == True:
 	
 else:
 	
+	print('singleton')
 	
 	# Create an attribute my_variant_set.candidate_compound_het_dict where each transcript is a key the variants 
 	# within that transcript are the values
@@ -323,15 +334,14 @@ else:
 my_variant_set.filter_variants(passes_final_filter_trio, args=(my_variant_set.final_compound_hets, inheritance ))
 
 
-variant_df = my_variant_set.to_df()
-
+variant_df = my_variant_set.to_df(min_parental_gq_dn= min_gq, min_parental_depth_dn=min_dp, min_parental_gq_upi=min_gq, min_parental_depth_upi= min_dp)
 
 
 gt_fields = []
 
 for fm in my_family.get_all_family_member_ids():
 
-	for field in ['_GT', '_DP', '_GQ']:
+	for field in ['_GT', '_DP', '_GQ', '_AD']:
 
 
 		gt_fields.append(fm + field)
