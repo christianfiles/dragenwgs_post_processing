@@ -223,7 +223,8 @@ process create_variant_reports {
     --min_dp $params.min_dp \
     --min_gq $params.min_gq \
     --min_af_mt $params.min_mt_af \
-    --output ${params.sequencing_run}.${sample_names[0]}_variant_report.csv
+    --output ${params.sequencing_run}.${sample_names[0]}_variant_report.csv \
+    --worklist $params.worklist_id
 
     """
 

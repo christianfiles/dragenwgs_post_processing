@@ -30,6 +30,7 @@ parser.add_argument('--min_gq', type=int, nargs=1, required=True,
 parser.add_argument('--min_af_mt', type=float, nargs=1, required=True,
 				help='min af for MT variants')
 parser.add_argument('--output', type=str, nargs=1, required=True, help='output name')
+parser.add_argument('--worklist', type=str, nargs=1, required=True, help='worklist id')
 
 args = parser.parse_args()
 
@@ -45,6 +46,7 @@ min_dp = args.min_dp[0]
 min_gq = args.min_gq[0]
 min_af_mt = args.min_af_mt[0]
 output_name = args.output[0]
+worklist = args.worklist[0]
 
 initial_af = max(gnomad_ad, gnomad_r)
 
@@ -339,15 +341,34 @@ variant_df = my_variant_set.to_df(min_parental_gq_dn= min_gq, min_parental_depth
 
 gt_fields = []
 
+proband_id = my_family.get_proband_id()
+
+variant_df['#SampleId'] = proband_id
+variant_df['WorklistId'] = worklist
+variant_df['Variant'] = variant_df['variant_id']
+variant_df['Genotype'] = variant_df[f'{proband_id}_GT']
+variant_df['SYMBOL'] = variant_df['csq_SYMBOL']
+variant_df['Feature'] = variant_df['csq_Feature']
+variant_df['Consequence'] = variant_df['csq_Consequence']
+variant_df['HGVSc'] = variant_df['csq_HGVSc']
+variant_df['HGVSp'] = variant_df['csq_HGVSp']
+variant_df['CLIN_SIG'] = variant_df['csq_CLIN_SIG']
+variant_df['Existing_variation'] = variant_df['csq_Existing_variation']
+variant_df['AutoPick'] = variant_df['csq_PICK']
+variant_df['gnomADg_AF_POPMAX'] = variant_df['csq_gnomADg_AF_POPMAX']
+variant_df['gnomADe_AF_POPMAX'] = variant_df['csq_gnomADe_AF_POPMAX']
+
+
 for fm in my_family.get_all_family_member_ids():
 
-	for field in ['_GT', '_DP', '_GQ', '_AD']:
+	if fm != proband_id:
+
+		for field in ['_GT', '_DP', '_GQ', '_AD']:
+
+			gt_fields.append(fm + field)
 
 
-		gt_fields.append(fm + field)
-
-
-csv_fields = ['variant_id', 'csq_SYMBOL', 'csq_Feature', 'csq_HGVSc', 'csq_HGVSp', 'csq_CLIN_SIG', 'csq_Existing_variation', 'worst_consequence', 'inheritance_models', 'csq_PICK', 'filter_status', 'csq_gnomADg_AF_POPMAX', 'csq_gnomADe_AF_POPMAX'] + gt_fields
+csv_fields = ['#SampleId', 'WorklistId', 'Variant', 'Genotype', f'{proband_id}_DP', f'{proband_id}_GQ',  f'{proband_id}_AD', 'SYMBOL', 'worst_consequence', 'Consequence', 'inheritance_models',  'HGVSc', 'HGVSp', 'CLIN_SIG', 'Existing_variation', 'csq_PICK', 'gnomADg_AF_POPMAX', 'gnomADe_AF_POPMAX'] + gt_fields
 
 
 variant_df[csv_fields].to_csv(output_name, index=False)
