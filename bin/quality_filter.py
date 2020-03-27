@@ -8,7 +8,6 @@ Script to apply filters to WGS data - requires a VCF with only one sample. This 
 
 """
 
-
 parser = argparse.ArgumentParser(description='Perform quality filtering on single sample vcfs before we upload to Qiagen')
 parser.add_argument('--vcf', type=str, nargs=1, required=True,
 				help='vcf file location')
@@ -39,13 +38,16 @@ min_gq = args.min_gq[0]
 
 myvcf = VariantFile(vcf, "r")
 
+
 myvcf.header.filters.add('LowAFMT', None, None, f'An MT variant with AF below {min_mt_af}')
 myvcf.header.filters.add('SNPQual', None, None, f'An SNP variant with QUAL below {snp_qual}')
 myvcf.header.filters.add('IndelQual', None, None, f'An Indel variant with QUAL below {indel_qual}')
-myvcf.header.filters.add('LowDepth', None, None, f'A non MT variant with DP below {min_dp}')
-myvcf.header.filters.add('LowGQ', None, None, f'A non MT variant with GQ below {min_gq}')
-myvcf.header.filters.add('lod_fstar', None, None, f'MT LOD is below default')
-myvcf.header.filters.add('DRAGENHardQUAL', None, None, f'Default Hard Filter Applied to Genotypes by Dragen')
+
+if 'LowDepth' not in myvcf.header.filters.keys():
+	myvcf.header.filters.add('LowDepth', None, None, f'A non MT variant with DP below {min_dp}')
+
+if 'LowGQ' not in  myvcf.header.filters.keys():
+	myvcf.header.filters.add('LowGQ', None, None, f'A non MT variant with GQ below {min_gq}')
 
 print(myvcf.header, end='')
 

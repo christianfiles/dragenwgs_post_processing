@@ -51,6 +51,7 @@ worklist = args.worklist[0]
 initial_af = max(gnomad_ad, gnomad_r)
 
 
+
 # define a few functions to help
 
 def passes_initial_filter(variant, proband_id, gene_dict):
@@ -66,9 +67,8 @@ def passes_initial_filter(variant, proband_id, gene_dict):
 
 
 
-
 	# If the proband has the variant and we pass the genotype and variant level filters
-	if variant.has_alt(proband_id) and variant.passes_gt_filter(proband_id, min_gq=min_gq):
+	if variant.has_alt(proband_id) and variant.passes_gt_filter(proband_id, min_gq=min_gq, min_dp=min_dp):
 
 		if variant.chrom == 'MT':
 
@@ -282,7 +282,7 @@ elif has_family == False and is_affected == True:
 	my_family.set_proband(proband.get_id())
 
 else:
-
+	print('not running as not affected.')
 	# make empty file
 	exit()
 
@@ -338,6 +338,10 @@ my_variant_set.filter_variants(passes_final_filter_trio, args=(my_variant_set.fi
 
 variant_df = my_variant_set.to_df(min_parental_gq_dn= min_gq, min_parental_depth_dn=min_dp, min_parental_gq_upi=min_gq, min_parental_depth_upi= min_dp)
 
+if variant_df.shape[0] ==0:
+
+	print ('No variants left.')
+	exit()
 
 gt_fields = []
 

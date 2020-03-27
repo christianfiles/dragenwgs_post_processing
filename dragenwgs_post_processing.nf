@@ -211,7 +211,7 @@ process create_variant_reports {
     set val(id), file("${params.sequencing_run}.${sample_names[0]}_variant_report.csv") optional true into variant_report_channel
 
     """
-    variant_reporter.py \
+    germline_variant_reporter.py \
     --vcf $vcf \
     --proband_id ${sample_names[0]} \
     --ped $ped \

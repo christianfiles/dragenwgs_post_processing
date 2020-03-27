@@ -6,3 +6,4 @@ data_old/
 .nextflow.log*
 .ipynb_checkpoints*
 .DS_Store
+data_new
