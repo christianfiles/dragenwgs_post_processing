@@ -17,7 +17,8 @@ gnomad_exomes = file(params.gnomad_exomes)
 gnomad_genomes = file(params.gnomad_genomes)
 vep_cache = file(params.vep_cache)
 gene_panel = file(params.gene_panel)
-
+whitelist = file(params.whitelist)
+clinvar = file(params.clinvar)
 
 /*
 ========================================================================================
@@ -146,6 +147,7 @@ process split_multiallelics_and_normalise{
 normalised_vcf_channel.into{
     for_vep_channel
     qiagen_vcf_channel
+    qiagen_prefiltered_vcf_channel
 }
 
 
@@ -187,7 +189,8 @@ process annotate_with_vep{
     --pick_order biotype,canonical,appris,tsl,ccds,rank,length \
     --exclude_predicted \
     --custom ${gnomad_genomes},gnomADg,vcf,exact,0,AF_POPMAX \
-    --custom ${gnomad_exomes},gnomADe,vcf,exact,0,AF_POPMAX 
+    --custom ${gnomad_exomes},gnomADe,vcf,exact,0,AF_POPMAX \
+    --custom ${clinvar},clinvarSIG,vcf,exact,0,CLNSIG,CLNSIGCONF
 
     bgzip ${params.sequencing_run}.norm.anno.vcf
     tabix ${params.sequencing_run}.norm.anno.vcf.gz
@@ -208,7 +211,7 @@ process create_variant_reports {
     file(ped) from ped_channel_reports
 
     output:
-    set val(id), file("${params.sequencing_run}.${sample_names[0]}_variant_report.csv") optional true into variant_report_channel
+    file("${params.sequencing_run}.${sample_names[0]}_variant_report.csv") optional true into variant_report_channel
 
     """
     germline_variant_reporter.py \
@@ -224,8 +227,8 @@ process create_variant_reports {
     --min_gq $params.min_gq \
     --min_af_mt $params.min_mt_af \
     --output ${params.sequencing_run}.${sample_names[0]}_variant_report.csv \
-    --worklist $params.worklist_id
-
+    --worklist $params.worklist_id \
+    --whitelist $whitelist
     """
 
 }
@@ -254,11 +257,6 @@ process calculate_relatedness {
 
 
 
-
-
-
-
-
 process split_multisample_vcfs {
 
     cpus params.small_task_cpus
@@ -280,6 +278,13 @@ process split_multisample_vcfs {
 }
 
 
+per_sample_vcf_channel.into{
+    whole_per_sample_vcf_channel
+    filtered_per_sample_vcf_channel
+
+}
+
+
 process filter_single_sample_vcfs_for_qiagen {
 
     cpus params.small_task_cpus
@@ -287,7 +292,7 @@ process filter_single_sample_vcfs_for_qiagen {
     publishDir "${params.publish_dir}/qiagen_vcfs/", mode: 'copy'
 
     input:
-    set val(id), file(vcf), file(vcf_index) from per_sample_vcf_channel
+    set val(id), file(vcf), file(vcf_index) from whole_per_sample_vcf_channel
 
     output:
     set file("${params.sequencing_run}.${sample_id}.qual.vcf.gz"), file("${params.sequencing_run}.${sample_id}.qual.vcf.gz.tbi")
@@ -310,6 +315,54 @@ process filter_single_sample_vcfs_for_qiagen {
     """
 
 }
+
+process create_pre_filtered_vcfs_from_variant_reports{
+
+    cpus params.small_task_cpus
+
+    publishDir "${params.publish_dir}/qiagen_prefiltered_vcfs/", mode: 'copy'
+
+
+    input:
+    set val(id), file(normalised_vcf), file(normalised_vcf_index) from qiagen_prefiltered_vcf_channel
+    each file(variant_report) from variant_report_channel
+
+
+    output:
+    file "${id}*filtered.vcf.gz"
+
+    """
+    sampleids=\$(get_sampleids_from_csv.py --csv $variant_report)
+
+
+    for i in \$sampleids; do
+
+        bcftools view -I -s \$i $normalised_vcf > ${params.sequencing_run}.\$i.vcf
+
+        bgzip ${params.sequencing_run}.\$i.vcf
+        tabix ${params.sequencing_run}.\$i.vcf.gz
+
+        convert_report_to_vcf.py \
+        --vcf ${params.sequencing_run}.\$i.vcf.gz \
+        --csv $variant_report \
+        --sample_id \$i > ${id}.\$i.filtered.vcf
+
+        bgzip ${id}.\$i.filtered.vcf
+
+
+    done
+
+    """
+
+
+
+
+
+
+
+}
+
+
 
 
 

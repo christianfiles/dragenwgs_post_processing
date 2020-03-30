@@ -15,6 +15,8 @@ parser.add_argument('--ped', type=str, nargs=1, required=True,
 				help='ped file containing family relationships.')
 parser.add_argument('--gene_list', type=str, nargs=1, required=True,
 				help='list of genes for virtual panel.')
+parser.add_argument('--whitelist', type=str, nargs=1, required=True,
+				help='list fo variants to come through regardless of anything else.')
 parser.add_argument('--gnomad_ad', type=float, nargs=1, required=True,
 				help='max gnomad freq to filter on for dominant variants.')
 parser.add_argument('--gnomad_r', type=float, nargs=1, required=True,
@@ -47,6 +49,7 @@ min_gq = args.min_gq[0]
 min_af_mt = args.min_af_mt[0]
 output_name = args.output[0]
 worklist = args.worklist[0]
+whitelist = args.whitelist[0]
 
 initial_af = max(gnomad_ad, gnomad_r)
 
@@ -54,14 +57,16 @@ initial_af = max(gnomad_ad, gnomad_r)
 
 # define a few functions to help
 
-def passes_initial_filter(variant, proband_id, gene_dict):
+def passes_initial_filter(variant, proband_id, gene_dict, whitelist):
 	"""
 	Filter variants from the VCF.
 	
 	We import if the variant passes quality filtering and is below 1% in gnomad exomes and gnomad genomes AND
 	
-	b) Is listed as pathogenic in clinvar OR
-	c) Has a a relevant consequence
+	a) Is listed as pathogenic in clinvar OR
+	b) Has a a relevant consequence
+
+	OR is in the whitelist
 	
 	"""
 
@@ -87,6 +92,16 @@ def passes_initial_filter(variant, proband_id, gene_dict):
 				if variant.quality < minqual_indels:
 
 					return False
+
+
+		chrom = variant.chrom
+		pos = variant.pos
+
+		var_key = f'{chrom}:{pos}'
+
+		if var_key in whitelist:
+
+			return True
 
 
 
@@ -169,7 +184,7 @@ def passes_initial_filter(variant, proband_id, gene_dict):
 		
 	return False
 
-def passes_final_filter_trio(variant, compound_het_dict , inheritance):
+def passes_final_filter_trio(variant, compound_het_dict , inheritance, whitelist):
 
 	freq_filterg = variant.filter_on_numerical_transcript_annotation_lte(annotation_key='gnomADg_AF_POPMAX',
 																						  ad_het=gnomad_ad,
@@ -194,6 +209,15 @@ def passes_final_filter_trio(variant, compound_het_dict , inheritance):
 																						  compound_het_dict=compound_het_dict
 																						  )  
 
+
+	chrom = variant.chrom
+	pos = variant.pos
+
+	var_key = f'{chrom}:{pos}'
+
+	if var_key in whitelist:
+
+		return True
 
 
 	# Coopt the get_genes() function to get the clinvar annotation VEP field.
@@ -240,6 +264,18 @@ gene_dict = {}
 for row in gene_df.itertuples():
 	
 	gene_dict[row[1]] = row[1]
+
+
+
+# read white list
+
+white_df = pd.read_csv(whitelist)
+
+white_dict = {}
+
+for row in white_df.itertuples():
+	
+	gene_dict[f'{row.chrom}:{row.pos}'] = f'{row.chrom}:{row.pos}'
 
 
 # have we got a singleton or a family?
