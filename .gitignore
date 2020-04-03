@@ -7,3 +7,4 @@ data_old/
 .ipynb_checkpoints*
 .DS_Store
 data_new
+config/NexteraDNAFlex/NexteraDNAFlex_nowhitelist.csv

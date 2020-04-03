@@ -100,6 +100,8 @@ process create_json_for_qiagen {
 // Extract sample names from vcf
 process get_sample_names_from_vcf{
 
+    cpus params.small_task_cpus
+
     input:
     set val(id), file(vcf), file(vcf_index) from raw_vcf_sample_names
 
@@ -116,7 +118,7 @@ process get_sample_names_from_vcf{
 // Create a channel with sample names as the values
 sample_names_from_vcf.splitCsv(header:['col1']).map{ row-> tuple(row.col1)}.set { samples_ch }
 
-
+// split this into multiple channels
 samples_ch.into{
     samples_ch_splitting
     samples_ch_reporting
@@ -190,7 +192,7 @@ process annotate_with_vep{
     --exclude_predicted \
     --custom ${gnomad_genomes},gnomADg,vcf,exact,0,AF_POPMAX \
     --custom ${gnomad_exomes},gnomADe,vcf,exact,0,AF_POPMAX \
-    --custom ${clinvar},clinvarSIG,vcf,exact,0,CLNSIG,CLNSIGCONF
+    --custom ${clinvar},clinvar,vcf,exact,0,CLNSIG,CLNSIGCONF
 
     bgzip ${params.sequencing_run}.norm.anno.vcf
     tabix ${params.sequencing_run}.norm.anno.vcf.gz
@@ -198,7 +200,7 @@ process annotate_with_vep{
     """
 }
 
-
+// Create variant reports csvs
 process create_variant_reports {
 
     cpus params.small_task_cpus
@@ -228,7 +230,8 @@ process create_variant_reports {
     --min_af_mt $params.min_mt_af \
     --output ${params.sequencing_run}.${sample_names[0]}_variant_report.csv \
     --worklist $params.worklist_id \
-    --whitelist $whitelist
+    --whitelist $whitelist \
+    --apply_panel 
     """
 
 }
@@ -256,7 +259,7 @@ process calculate_relatedness {
 }
 
 
-
+// 
 process split_multisample_vcfs {
 
     cpus params.small_task_cpus
@@ -355,18 +358,9 @@ process create_pre_filtered_vcfs_from_variant_reports{
     """
 
 
-
-
-
-
-
 }
 
-
-
-
-
-
+// create marker once complete
 workflow.onComplete{
 
     if (workflow.success){
