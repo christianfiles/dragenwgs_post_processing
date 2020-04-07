@@ -319,6 +319,7 @@ process filter_single_sample_vcfs_for_qiagen {
 
 }
 
+//
 process create_pre_filtered_vcfs_from_variant_reports{
 
     cpus params.small_task_cpus

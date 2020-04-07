@@ -148,12 +148,14 @@ def passes_initial_filter(variant, proband_id, gene_dict, whitelist, min_gq, min
 	# If the proband has the variant and we pass the genotype and variant level filters
 	if variant.has_alt(proband_id) and variant.passes_gt_filter(proband_id, min_gq=min_gq, min_dp=min_dp):
 
+		# ignore mt variants for now
 		if variant.chrom == 'MT':
 
 			return False
 
 		else:
 
+			#get rid of poor quality variants
 			if variant.is_snp():
 
 				if variant.quality < minqual_snps:
@@ -170,7 +172,7 @@ def passes_initial_filter(variant, proband_id, gene_dict, whitelist, min_gq, min
 		# The filter_on_numerical_transcript_annotation_lte() function allows us to filter on numerical values 
 		# we can set different cutoffs for different variant types. For example ad_het is variants in which the 
 		# proband is heterozygous on an autosome. In this case we get two boolean values describing whether the 
-		# variant is below 1% in the gnomad genomes and gnomad exomes datasets.
+		# variant is below x% in the gnomad genomes and gnomad exomes datasets.
 		freq_filterg = variant.filter_on_numerical_transcript_annotation_lte(annotation_key='gnomADg_AF_POPMAX',
 																						  ad_het=initial_af,
 																						  ad_hom_alt=initial_af,
@@ -190,7 +192,8 @@ def passes_initial_filter(variant, proband_id, gene_dict, whitelist, min_gq, min
 																						  compound_het=initial_af,
 																						  y=initial_af,
 																						  mt=initial_af,
-																						  )  
+																						  ) 
+		# if we haven't bothered with a panel
 		if gene_dict == None:
 
 			variant.info_annotations['in_panel'] = False
@@ -206,6 +209,7 @@ def passes_initial_filter(variant, proband_id, gene_dict, whitelist, min_gq, min
 
 				if gene in gene_dict:
 
+					# its in the panel so set annotation in_panel to True
 					variant.info_annotations['in_panel'] = True
 					in_panel = True
 					break
@@ -216,23 +220,24 @@ def passes_initial_filter(variant, proband_id, gene_dict, whitelist, min_gq, min
 
 		var_key = f'{chrom}:{pos}'
 
+		# keep variants in whitelist
 		if var_key in whitelist:
 
 			return True
 
 		# Coopt the get_genes() function to get the clinvar annotation VEP field.
 		clinvar_vep = variant.get_genes(feature_key='CLIN_SIG')
-
-		clinvar_custom = variant.get_genes('clinvarSIG_CLNSIG')
-		clinvar_conflicting = variant.get_genes('clinvarSIG_CLNSIGCONF')
+		clinvar_custom = variant.get_genes('clinvar_CLNSIG')
+		clinvar_conflicting = variant.get_genes('clinvar_CLNSIGCONF')
 
 		is_path_in_clinvar = pathogenic_in_clinvar(clinvar_vep, clinvar_custom, clinvar_conflicting)
 
-		# If the variant is below 1% and pathogenic in clinvar then import
+		# If the variant is below x% and pathogenic in clinvar then keep
 		if freq_filterg and freq_filtere and is_path_in_clinvar:
 			
 			return True
 
+		# now check worst consequence
 		csq_filter = False
 		
 		if variant.get_worst_consequence() in {'transcript_ablation': None,
@@ -254,7 +259,7 @@ def passes_initial_filter(variant, proband_id, gene_dict, whitelist, min_gq, min
 		
 			csq_filter = True
 		
-	   # If the variant is below 1% and has a relevant consequence then import
+	   # If the variant is below x% and has a relevant consequence then import
 		if csq_filter and freq_filterg and freq_filtere:
 			
 			return True
@@ -262,6 +267,12 @@ def passes_initial_filter(variant, proband_id, gene_dict, whitelist, min_gq, min
 	return False
 
 def passes_final_filter_trio(variant, compound_het_dict , inheritance, whitelist, min_gq, min_dp):
+	"""
+	We do the filtering in 2 steps so we can work out which are comp hets.
+
+	This function allows us to keep variants matching an inheritance pattern.
+
+	"""
 
 	freq_filterg = variant.filter_on_numerical_transcript_annotation_lte(annotation_key='gnomADg_AF_POPMAX',
 																						  ad_het=gnomad_ad,
@@ -329,6 +340,7 @@ def passes_final_filter_trio(variant, compound_het_dict , inheritance, whitelist
 # read ped into df
 ped_df = pd.read_csv(ped, sep='\t', names=['family_id', 'sample_id', 'paternal_id', 'maternal_id', 'sex', 'affected'])
 
+
 if apply_panel == True:
 
 	# read gene list to dict
@@ -344,10 +356,11 @@ else:
 
 	gene_dict = None
 
+
+
+
 # read white list
-
 white_df = pd.read_csv(whitelist)
-
 white_dict = {}
 
 for row in white_df.itertuples():
@@ -378,6 +391,8 @@ if affected == 2:
 
 
 # create family object
+
+# if we have a family and sample is affected
 if has_family == True and is_affected == True:
 	
 	my_family = Family(family_id)
@@ -396,7 +411,7 @@ elif has_family == False and is_affected == True:
 
 else:
 	print('not running as not affected.')
-	# make empty file
+	# make empty file maybe?
 	exit()
 
 
@@ -407,18 +422,17 @@ my_variant_set = VariantSet()
 # Associate the my_family object with my_variant_set
 my_variant_set.add_family(my_family)
 
-
+# read from vcf
 my_variant_set.read_variants_from_vcf(vcf,
 									proband_variants_only=True,
 									filter_func=passes_initial_filter,
 									args=(proband_id, gene_dict, white_dict,min_gq, min_dp))
 
-# see whether we can phase comp hets by inheritance
 
+
+# see whether we can phase comp hets by inheritance
 if my_variant_set.family.proband_has_both_parents() == True:
 
-	print('Trio Found')
-	
 	# Create an attribute my_variant_set.candidate_compound_het_dict where each transcript is a key the variants 
 	# within that transcript are the values
 	my_variant_set.get_candidate_compound_hets()
@@ -435,8 +449,6 @@ if my_variant_set.family.proband_has_both_parents() == True:
 	
 else:
 	
-	print('singleton')
-	
 	# Create an attribute my_variant_set.candidate_compound_het_dict where each transcript is a key the variants 
 	# within that transcript are the values
 	my_variant_set.get_candidate_compound_hets()
@@ -446,20 +458,26 @@ else:
 
 	inheritance = ['uniparental_isodisomy', 'autosomal_dominant', 'autosomal_reccessive','x_reccessive','x_dominant','de_novo', 'compound_het']
 
+
+# now apply second filtering function
 my_variant_set.filter_variants(passes_final_filter_trio, args=(my_variant_set.final_compound_hets, inheritance, white_dict, min_gq, min_dp ))
 
 
+# convert to pandas dataframe
 variant_df = my_variant_set.to_df(min_parental_gq_dn= min_gq, min_parental_depth_dn=min_dp, min_parental_gq_upi=min_gq, min_parental_depth_upi= min_dp)
 
+# catch NTC
 if variant_df.shape[0] ==0:
 
 	print ('No variants left.')
 	exit()
 
+
+# format pandas dataframe
+
 gt_fields = []
 
 proband_id = my_family.get_proband_id()
-
 variant_df['#SampleId'] = proband_id
 variant_df['WorklistId'] = worklist
 variant_df['Variant'] = variant_df['variant_id']
@@ -475,9 +493,10 @@ variant_df['AutoPick'] = variant_df['csq_PICK']
 variant_df['gnomADg_AF_POPMAX'] = variant_df['csq_gnomADg_AF_POPMAX']
 variant_df['gnomADe_AF_POPMAX'] = variant_df['csq_gnomADe_AF_POPMAX']
 
-
+# add sample specific columns such as genotype and depth
 for fm in my_family.get_all_family_member_ids():
 
+	# ignore proband as we did it earlier
 	if fm != proband_id:
 
 		for field in ['_GT', '_DP', '_GQ', '_AD']:
@@ -487,8 +506,8 @@ for fm in my_family.get_all_family_member_ids():
 
 csv_fields = ['#SampleId', 'WorklistId', 'Variant', 'Genotype', f'{proband_id}_DP', f'{proband_id}_GQ',  f'{proband_id}_AD', 'SYMBOL', 'worst_consequence', 'Consequence', 'inheritance_models',  'HGVSc', 'HGVSp', 'CLIN_SIG', 'Existing_variation', 'csq_PICK', 'info_in_panel', 'gnomADg_AF_POPMAX', 'gnomADe_AF_POPMAX'] + gt_fields
 
-
-variant_df[csv_fields].to_csv(output_name, index=False)
+# save to file
+variant_df[csv_fields].to_csv(output_name, index=False, sep='\t')
 
 
 

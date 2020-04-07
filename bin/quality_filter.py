@@ -49,6 +49,9 @@ if 'LowDepth' not in myvcf.header.filters.keys():
 if 'LowGQ' not in  myvcf.header.filters.keys():
 	myvcf.header.filters.add('LowGQ', None, None, f'A non MT variant with GQ below {min_gq}')
 
+if 'lod_fstar' not in  myvcf.header.filters.keys():
+	myvcf.header.filters.add('lod_fstar', None, None, f'MT variant with low fstar {min_gq}')
+
 print(myvcf.header, end='')
 
 for variant in myvcf:

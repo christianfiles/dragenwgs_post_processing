@@ -42,7 +42,7 @@ sample_id = args.sample_id[0]
 variant_dict = {}
 
 with open(csv_file, newline='') as csvfile:
-	spamreader = csv.reader(csvfile, delimiter=',')
+	spamreader = csv.reader(csvfile, delimiter='\t')
 
 	count = 0
 
@@ -53,6 +53,8 @@ with open(csv_file, newline='') as csvfile:
 			pass
 
 		else:
+
+			print(row)
 
 			variant_dict[row[2]] = row[2]
 

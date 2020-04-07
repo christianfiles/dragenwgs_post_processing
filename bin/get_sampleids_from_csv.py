@@ -15,7 +15,7 @@ sample_ids = []
 
 
 with open(csv_file, newline='') as csvfile:
-	spamreader = csv.reader(csvfile, delimiter=',')
+	spamreader = csv.reader(csvfile, delimiter='\t')
 
 	count = 0
 
