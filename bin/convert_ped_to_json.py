@@ -4,6 +4,12 @@ import json
 import argparse
 import csv
 
+"""
+Script to convert tsv ped file into json verison for qiagen upload
+
+
+"""
+
 parser = argparse.ArgumentParser(description='Create a json pedigree for upload to Qiagen file from text ped file.')
 parser.add_argument('--pedfile', type=str, nargs=1, required=True,
 				help='ped file location')
@@ -21,6 +27,7 @@ output = args.output[0]
 
 ped_dict = {}
 
+# create a dictionary with ped information
 with open(args.pedfile[0], 'r') as csvfile:
 
 	my_reader = csv.reader(csvfile, delimiter='\t')

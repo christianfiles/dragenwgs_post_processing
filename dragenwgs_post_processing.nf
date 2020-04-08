@@ -182,7 +182,7 @@ process annotate_with_vep{
     --dir  $vep_cache \
     --fasta $reference_genome \
     --offline \
-    --cache_version 94 \
+    --cache_version $params.vepversion \
     --no_escape \
     --shift_hgvs 1 \
     --vcf \

@@ -54,8 +54,6 @@ with open(csv_file, newline='') as csvfile:
 
 		else:
 
-			print(row)
-
 			variant_dict[row[2]] = row[2]
 
 		count = count +1

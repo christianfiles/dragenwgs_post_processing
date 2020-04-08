@@ -93,6 +93,10 @@ for variant in myvcf:
 
 			af = af[0]
 
+			if af = None:
+
+				af = 0.0
+
 			if af < min_mt_af:
 
 				filters_to_add.append('LowAFMT')
