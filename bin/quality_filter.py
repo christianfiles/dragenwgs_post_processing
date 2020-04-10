@@ -93,7 +93,7 @@ for variant in myvcf:
 
 			af = af[0]
 
-			if af = None:
+			if af == None:
 
 				af = 0.0
 
