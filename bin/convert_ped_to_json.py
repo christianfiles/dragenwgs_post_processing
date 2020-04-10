@@ -49,7 +49,7 @@ with open(args.pedfile[0], 'r') as csvfile:
 
 		if is_proband == True: 
 
-			row_dict = {'id': f'{seqid}_{row[1]}', 'proband': is_proband, 'father': dad, 'mother': mum, 'externalId': f'{seqid}_{row[1]}'}
+			row_dict = {'id': f'{seqid}_{row[1]}', 'proband': is_proband, 'father': f'{seqid}_{dad}', 'mother': f'{seqid}_{mum}', 'externalId': f'{seqid}_{row[1]}'}
 
 		else:
 

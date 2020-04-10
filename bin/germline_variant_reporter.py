@@ -377,6 +377,16 @@ affected = filtered_ped['affected'].iloc[0]
 
 sex = filtered_ped['sex'].iloc[0]
 
+
+# if any family members don't have sex set in ped
+family_ped = ped_df[ped_df['family_id'] == family_id]
+
+
+if 0 in list(family_ped['sex']):
+	print('Sex cannot be zero - not running program.')
+	# make empty file maybe?
+	exit()
+
 has_family= False
 
 if family_id != '0':
