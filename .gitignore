@@ -1,0 +1,11 @@
+work/
+results/
+data/
+data_old/
+.nextflow/
+.nextflow.log*
+.ipynb_checkpoints*
+.DS_Store
+data_new
+config/NexteraDNAFlex/NexteraDNAFlex_nowhitelist.csv
+200308_A00748_0015_BHKVL3DRXX/

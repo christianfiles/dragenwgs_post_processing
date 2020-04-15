@@ -9,6 +9,7 @@ Performs the following processes:
 - Addional Quality Filtering of Variant Calls
 - Prepares VCF for CIP Upload
 - Annotates VCF with VEP
+- Creates variant reports
 
 ## Install
 
@@ -28,6 +29,8 @@ Configuration files are located in the config directory. Locations of files such
 
 The pipeline uses nextflow as a workflow manager to make it easy to deploy the pipeline in local and cluster environments.
 
+The starting point for running the pipeline is the results directory with the output of the DragenWGS pipeline.
+
 To run on cluster:
 
 ```
@@ -40,5 +43,10 @@ dragenwgs_post_processing.nf \
 --publish_dir /share/data/results/dragen_temp/191010_D00501_0366_BH5JWHBCX3/NexteraDNAFlex/results \
 --sequencing_run 191010_D00501_0366_BH5JWHBCX3 \
 -work-dir /share/data/results/dragen_temp/191010_D00501_0366_BH5JWHBCX3/NexteraDNAFlex/work
-
 ```
+
+To run locally:
+```
+nextflow -C config/NexteraDNAFlex/NexteraDNAFlex_local.config run dragenwgs_post_processing.nf -resume
+```
+
