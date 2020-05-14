@@ -18,7 +18,10 @@ gnomad_genomes = file(params.gnomad_genomes)
 vep_cache = file(params.vep_cache)
 gene_panel = file(params.gene_panel)
 whitelist = file(params.whitelist)
+whitelist_mito = file(params.whitelist_mito)
 clinvar = file(params.clinvar)
+vep_cache_mt = file(params.vep_cache_mt )
+mitomap = file(params.mitomap_vcf)
 
 /*
 ========================================================================================
@@ -73,6 +76,7 @@ process create_ped {
 ped_channel.into{
     ped_channel_json
     ped_channel_reports
+    ped_channel_reports_mito
 }
 
 // create json for qiagen upload
@@ -122,6 +126,7 @@ sample_names_from_vcf.splitCsv(header:['col1']).map{ row-> tuple(row.col1)}.set 
 samples_ch.into{
     samples_ch_splitting
     samples_ch_reporting
+    samples_ch_reporting_mito
 }
 
 
@@ -150,6 +155,7 @@ normalised_vcf_channel.into{
     for_vep_channel
     qiagen_vcf_channel
     qiagen_prefiltered_vcf_channel
+    for_mito_vcf_channel
 }
 
 
@@ -209,7 +215,7 @@ process create_variant_reports {
 
     input:
     set val(id), file(vcf), file(vcf_index) from annotated_vcf
-    each sample_names from samples_ch_reporting
+    each sample_names from samples_ch_reporting_mito
     file(ped) from ped_channel_reports
 
     output:
@@ -319,7 +325,7 @@ process filter_single_sample_vcfs_for_qiagen {
 
 }
 
-//
+// make vcf with just variants from variant report
 process create_pre_filtered_vcfs_from_variant_reports{
 
     cpus params.small_task_cpus
@@ -357,9 +363,97 @@ process create_pre_filtered_vcfs_from_variant_reports{
     done
 
     """
+}
 
+// make vcf with just variants from variant report
+process get_mitochondrial_variant_and_annotate{
+
+    cpus params.small_task_cpus
+
+    publishDir "${params.publish_dir}/mitochondrial_vcf/", mode: 'copy'
+
+
+    input:
+    set val(id), file(normalised_vcf), file(normalised_vcf_index) from for_mito_vcf_channel
+
+    output:
+    set val(id), file("${params.sequencing_run}.mito.vep.vcf.gz"), file("${params.sequencing_run}.mito.vep.vcf.gz.tbi") into mito_vcf_channel
+
+    """
+    bcftools view -r MT $normalised_vcf > ${params.sequencing_run}.mito.vcf
+    bgzip ${params.sequencing_run}.mito.vcf
+    tabix ${params.sequencing_run}.mito.vcf.gz
+
+    vep \
+    --verbose \
+    --format vcf \
+    --everything \
+    --fork $params.vep_cpus \
+    --species homo_sapiens \
+    --assembly GRCh37 \
+    --input_file ${params.sequencing_run}.mito.vcf.gz \
+    --output_file ${params.sequencing_run}.mito.vep.vcf \
+    --force_overwrite \
+    --cache \
+    --dir  $vep_cache_mt \
+    --fasta $reference_genome \
+    --offline \
+    --cache_version $params.vepversion_mt \
+    --no_escape \
+    --shift_hgvs 1 \
+    --vcf \
+    --merged \
+    --flag_pick \
+    --pick_order biotype,canonical,appris,tsl,ccds,rank,length \
+    --exclude_predicted \
+    --custom ${mitomap},mitomap,vcf,exact,0,AF,AC \
+    --custom ${clinvar},clinvar,vcf,exact,0,CLNSIG,CLNSIGCONF
+
+    bgzip ${params.sequencing_run}.mito.vep.vcf
+    tabix ${params.sequencing_run}.mito.vep.vcf.gz
+
+    """
+}
+
+// Create variant reports csvs
+process create_mito_variant_reports {
+
+    cpus params.small_task_cpus
+
+    publishDir "${params.publish_dir}/variant_reports_mitochondrial/", mode: 'copy'
+
+    input:
+    set val(id), file(vcf), file(vcf_index) from mito_vcf_channel
+    each sample_names from samples_ch_reporting
+    file(ped) from ped_channel_reports_mito
+
+    output:
+    file("${params.sequencing_run}.${sample_names[0]}_variant_report_mito.csv") optional true into variant_report_mito_channel
+
+    """
+    mitochondrial_variant_reporter.py \
+    --vcf $vcf \
+    --proband_id ${sample_names[0]} \
+    --ped $ped \
+    --output ${params.sequencing_run}.${sample_names[0]}_variant_report_mito.csv \
+    --worklist $params.worklist_id \
+    --whitelist $whitelist_mito \
+    --min_mt_af $params.min_mt_af \
+    --max_mitomap_af $params.max_mitomap_af 
+
+    """
 
 }
+
+
+
+
+
+
+
+
+
+
 
 // create marker once complete
 workflow.onComplete{

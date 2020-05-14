@@ -384,7 +384,9 @@ family_ped = ped_df[ped_df['family_id'] == family_id]
 
 if 0 in list(family_ped['sex']):
 	print('Sex cannot be zero - not running program.')
-	# make empty file maybe?
+	f = open(output_name, 'w')
+	f.write(f'Sample {proband_id} has no sex. Program not run.')
+	f.close()
 	exit()
 
 has_family= False
@@ -421,7 +423,9 @@ elif has_family == False and is_affected == True:
 
 else:
 	print('not running as not affected.')
-	# make empty file maybe?
+	f = open(output_name, 'w')
+	f.write(f'Sample {proband_id} is not affected. Program not run.')
+	f.close()
 	exit()
 
 
@@ -479,7 +483,9 @@ variant_df = my_variant_set.to_df(min_parental_gq_dn= min_gq, min_parental_depth
 # catch NTC
 if variant_df.shape[0] ==0:
 
-	print ('No variants left.')
+	f = open(output_name, 'w')
+	f.write(f'Sample {proband_id} has no variants. Program not run.')
+	f.close()
 	exit()
 
 
