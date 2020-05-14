@@ -154,7 +154,6 @@ process split_multiallelics_and_normalise{
 normalised_vcf_channel.into{
     for_vep_channel
     qiagen_vcf_channel
-    qiagen_prefiltered_vcf_channel
     for_mito_vcf_channel
 }
 
@@ -177,7 +176,19 @@ process annotate_with_vep{
     vep \
     --verbose \
     --format vcf \
-    --everything \
+    --hgvs \
+    --symbol \
+    --numbers \
+    --domains \
+    --regulatory \
+    --canonical \
+    --protein \
+    --biotype \
+    --uniprot \
+    --tsl \
+    --appris \
+    --gene \
+    --variant_class \
     --fork $params.vep_cpus \
     --species homo_sapiens \
     --assembly GRCh37 \
@@ -196,8 +207,6 @@ process annotate_with_vep{
     --flag_pick \
     --pick_order biotype,canonical,appris,tsl,ccds,rank,length \
     --exclude_predicted \
-    --custom ${gnomad_genomes},gnomADg,vcf,exact,0,AF_POPMAX \
-    --custom ${gnomad_exomes},gnomADe,vcf,exact,0,AF_POPMAX \
     --custom ${clinvar},clinvar,vcf,exact,0,CLNSIG,CLNSIGCONF
 
     bgzip ${params.sequencing_run}.norm.anno.vcf
@@ -326,46 +335,6 @@ process filter_single_sample_vcfs_for_qiagen {
 }
 
 // make vcf with just variants from variant report
-process create_pre_filtered_vcfs_from_variant_reports{
-
-    cpus params.small_task_cpus
-
-    publishDir "${params.publish_dir}/qiagen_prefiltered_vcfs/", mode: 'copy'
-
-
-    input:
-    set val(id), file(normalised_vcf), file(normalised_vcf_index) from qiagen_prefiltered_vcf_channel
-    each file(variant_report) from variant_report_channel
-
-
-    output:
-    file "${id}*filtered.vcf.gz"
-
-    """
-    sampleids=\$(get_sampleids_from_csv.py --csv $variant_report)
-
-
-    for i in \$sampleids; do
-
-        bcftools view -I -s \$i $normalised_vcf > ${params.sequencing_run}.\$i.vcf
-
-        bgzip ${params.sequencing_run}.\$i.vcf
-        tabix ${params.sequencing_run}.\$i.vcf.gz
-
-        convert_report_to_vcf.py \
-        --vcf ${params.sequencing_run}.\$i.vcf.gz \
-        --csv $variant_report \
-        --sample_id \$i > ${id}.\$i.filtered.vcf
-
-        bgzip ${id}.\$i.filtered.vcf
-
-
-    done
-
-    """
-}
-
-// make vcf with just variants from variant report
 process get_mitochondrial_variant_and_annotate{
 
     cpus params.small_task_cpus
@@ -444,14 +413,6 @@ process create_mito_variant_reports {
     """
 
 }
-
-
-
-
-
-
-
-
 
 
 
