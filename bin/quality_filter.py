@@ -115,8 +115,20 @@ for variant in myvcf:
 		else:
 
 			for filt in filters_to_add:
+				
+				if ';' in filt:
 
-				variant.filter.add(filt)
+					new_filts = filt.split(';')
+
+					for new_filt in new_filts:
+
+						
+						variant.filter.add(new_filt)
+
+				else:
+
+
+					variant.filter.add(filt)
 
 	else:
 
@@ -127,7 +139,6 @@ for variant in myvcf:
 		try:
 
 			gq = variant.samples[sampleid]['GQ']
-
 		except:
 
 			gq = 0
@@ -192,8 +203,18 @@ for variant in myvcf:
 		else:
 
 			for filt in filters_to_add:
+				
+				if ';' in filt:
 
-				variant.filter.add(filt)
+					new_filts = filt.split(';')
+					
+					for new_filt in new_filts:
+
+						variant.filter.add(filt)					
+
+				else:
+
+					variant.filter.add(filt)
 
 		
 	print (variant, end='')
