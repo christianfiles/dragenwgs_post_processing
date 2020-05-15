@@ -7,7 +7,6 @@ import csv
 """
 Script to convert tsv ped file into json verison for qiagen upload
 
-
 """
 
 parser = argparse.ArgumentParser(description='Create a json pedigree for upload to Qiagen file from text ped file.')
@@ -19,7 +18,6 @@ parser.add_argument('--output', type=str, nargs=1, required=True,
 				help='output name')
 
 args = parser.parse_args()
-
 
 pedfile = args.pedfile[0]
 seqid = args.seqid[0]
@@ -92,7 +90,22 @@ for family_id in ped_dict:
 
 	with open(file_name, 'w') as outfile:
 
-		json.dump(ped_dict[family_id], outfile)
+		# try and order it
+		new_ped_dict_family = []
+
+		for member in ped_dict[family_id]:
+
+			if 'proband' in member:
+
+				new_ped_dict_family.append(member)
+
+		for member in ped_dict[family_id]:
+
+			if 'proband' not in member:
+
+				new_ped_dict_family.append(member)
+
+		json.dump(new_ped_dict_family, outfile)
 
 
 

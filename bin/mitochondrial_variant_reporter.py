@@ -292,10 +292,5 @@ for fm in my_family.get_all_family_member_ids():
 
 csv_fields = ['#SampleId', 'WorklistId', 'Variant', 'Genotype', f'{proband_id}_DP', f'{proband_id}_AF', 'SYMBOL', 'Feature', 'worst_consequence', 'Consequence', 'inheritance_models',  'HGVSc', 'HGVSp', 'CLIN_SIG', 'Existing_variation', 'csq_PICK', 'mitomap_AF' ] + gt_fields
 
-
-
-
-
-
 # save to file
 variant_df[csv_fields].to_csv(output_name, index=False, sep='\t')

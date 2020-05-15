@@ -13,8 +13,6 @@ Define initial files
 */
 
 reference_genome = file(params.reference_genome)
-gnomad_exomes = file(params.gnomad_exomes)
-gnomad_genomes = file(params.gnomad_genomes)
 vep_cache = file(params.vep_cache)
 gene_panel = file(params.gene_panel)
 whitelist = file(params.whitelist)
@@ -22,6 +20,7 @@ whitelist_mito = file(params.whitelist_mito)
 clinvar = file(params.clinvar)
 vep_cache_mt = file(params.vep_cache_mt )
 mitomap = file(params.mitomap_vcf)
+gnotate = file(params.gnotate)
 
 /*
 ========================================================================================
@@ -47,13 +46,17 @@ raw_vcf.into{
 }
 
 
+// Chromosomes for when we do VEP in parallel
+chromosome_ch = Channel.from('1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', 'X', 'Y', 'MT' )
+
+
 /*
 ========================================================================================
 Main pipeline
 ========================================================================================
 */
 
-// create ped file
+// Create PED file
 process create_ped {
 
     cpus params.small_task_cpus
@@ -79,7 +82,7 @@ ped_channel.into{
     ped_channel_reports_mito
 }
 
-// create json for qiagen upload
+// Create json for qiagen upload
 process create_json_for_qiagen {
 
     cpus params.small_task_cpus
@@ -99,8 +102,6 @@ process create_json_for_qiagen {
 
 }
 
-
-
 // Extract sample names from vcf
 process get_sample_names_from_vcf{
 
@@ -118,19 +119,17 @@ process get_sample_names_from_vcf{
 
 }
 
-
 // Create a channel with sample names as the values
 sample_names_from_vcf.splitCsv(header:['col1']).map{ row-> tuple(row.col1)}.set { samples_ch }
 
-// split this into multiple channels
+// Split this into multiple channels
 samples_ch.into{
     samples_ch_splitting
     samples_ch_reporting
     samples_ch_reporting_mito
 }
 
-
-// split multiallelics and normalise
+// Split multiallelics and normalise
 process split_multiallelics_and_normalise{
 
     cpus params.vcf_processing_cpus
@@ -150,27 +149,43 @@ process split_multiallelics_and_normalise{
 
 }
 
-
 normalised_vcf_channel.into{
-    for_vep_channel
+    for_splitting_channel
     qiagen_vcf_channel
     for_mito_vcf_channel
 }
 
+// Split the normalised vcf up per chromosome for parallel processing
+process split_vcf_per_chromosome{
 
+    cpus params.vcf_processing_cpus
 
-// Annotate using VEP
+    input:
+    set val(id), file(normalised_vcf), file(normalised_vcf_index) from for_splitting_channel
+    each chromosome from chromosome_ch
+
+    output:
+    set val(chromosome), file("${params.sequencing_run}.norm.${chromosome}.vcf.gz"), file("${params.sequencing_run}.norm.${chromosome}.vcf.gz.tbi")  into for_vep_channel
+
+    """
+    bcftools view -r $chromosome $normalised_vcf > ${params.sequencing_run}.norm.${chromosome}.vcf
+
+    bgzip ${params.sequencing_run}.norm.${chromosome}.vcf
+    tabix ${params.sequencing_run}.norm.${chromosome}.vcf.gz
+
+    """
+}
+
+// Annotate using VEP and slivar for gnomad
 process annotate_with_vep{
 
     cpus params.vep_cpus
 
-    publishDir "${params.publish_dir}/annotated_vcf/", mode: 'copy'
-
     input:
-    set val(id), file(normalised_vcf), file(normalised_vcf_index) from for_vep_channel
+    set val(chromosome), file(normalised_vcf), file(normalised_vcf_index) from for_vep_channel
 
     output:
-    set val(id), file("${params.sequencing_run}.norm.anno.vcf.gz"), file("${params.sequencing_run}.norm.anno.vcf.gz.tbi")  into annotated_vcf
+    file("${params.sequencing_run}.norm.${chromosome}.anno.vcf") into annotated_vcf_per_chromosome
 
     """
     vep \
@@ -189,11 +204,12 @@ process annotate_with_vep{
     --appris \
     --gene \
     --variant_class \
+    --check_existing \
     --fork $params.vep_cpus \
     --species homo_sapiens \
     --assembly GRCh37 \
     --input_file $normalised_vcf \
-    --output_file ${params.sequencing_run}.norm.anno.vcf \
+    --output_file ${params.sequencing_run}.norm.${chromosome}.vep.vcf \
     --force_overwrite \
     --cache \
     --dir  $vep_cache \
@@ -209,13 +225,34 @@ process annotate_with_vep{
     --exclude_predicted \
     --custom ${clinvar},clinvar,vcf,exact,0,CLNSIG,CLNSIGCONF
 
+    bgzip ${params.sequencing_run}.norm.${chromosome}.vep.vcf
+    tabix ${params.sequencing_run}.norm.${chromosome}.vep.vcf.gz
+
+    slivar expr --gnotate $gnotate -o ${params.sequencing_run}.norm.${chromosome}.anno.vcf -v ${params.sequencing_run}.norm.${chromosome}.vep.vcf.gz
+    """
+}
+
+// Merge per chromosome vcfs back into one vcf
+process merge_annotated_vcfs{
+
+    publishDir "${params.publish_dir}/annotated_vcf/", mode: 'copy'
+
+    input:
+    file(vcfs) from annotated_vcf_per_chromosome.collect()
+
+    output:
+    set file("${params.sequencing_run}.norm.anno.vcf.gz"), file("${params.sequencing_run}.norm.anno.vcf.gz.tbi") into annotated_vcf
+
+    """
+    bcftools concat ${vcfs.collect { "$it " }.join()} | bcftools sort > ${params.sequencing_run}.norm.anno.vcf
+
     bgzip ${params.sequencing_run}.norm.anno.vcf
     tabix ${params.sequencing_run}.norm.anno.vcf.gz
 
     """
 }
 
-// Create variant reports csvs
+// Create variant reports csvs for non mitochondrial variants
 process create_variant_reports {
 
     cpus params.small_task_cpus
@@ -223,7 +260,7 @@ process create_variant_reports {
     publishDir "${params.publish_dir}/variant_reports/", mode: 'copy'
 
     input:
-    set val(id), file(vcf), file(vcf_index) from annotated_vcf
+    set file(vcf), file(vcf_index) from annotated_vcf
     each sample_names from samples_ch_reporting_mito
     file(ped) from ped_channel_reports
 
@@ -248,7 +285,6 @@ process create_variant_reports {
     --whitelist $whitelist \
     --apply_panel 
     """
-
 }
 
 // Calculate relatedness between samples
@@ -270,11 +306,9 @@ process calculate_relatedness {
     --gzvcf $vcf
 
     """
-
 }
 
-
-// 
+// Split multisample VCF up per sample VCFs as QCII requires in this way
 process split_multisample_vcfs {
 
     cpus params.small_task_cpus
@@ -292,17 +326,9 @@ process split_multisample_vcfs {
     bgzip ${params.sequencing_run}.${sample_names[0]}.vcf
     tabix ${params.sequencing_run}.${sample_names[0]}.vcf.gz
     """
-
 }
 
-
-per_sample_vcf_channel.into{
-    whole_per_sample_vcf_channel
-    filtered_per_sample_vcf_channel
-
-}
-
-
+// Apply quality filtering script to per sample VCF
 process filter_single_sample_vcfs_for_qiagen {
 
     cpus params.small_task_cpus
@@ -310,7 +336,7 @@ process filter_single_sample_vcfs_for_qiagen {
     publishDir "${params.publish_dir}/qiagen_vcfs/", mode: 'copy'
 
     input:
-    set val(id), file(vcf), file(vcf_index) from whole_per_sample_vcf_channel
+    set val(id), file(vcf), file(vcf_index) from per_sample_vcf_channel
 
     output:
     set file("${params.sequencing_run}.${sample_id}.qual.vcf.gz"), file("${params.sequencing_run}.${sample_id}.qual.vcf.gz.tbi")
@@ -331,22 +357,20 @@ process filter_single_sample_vcfs_for_qiagen {
     tabix ${params.sequencing_run}.${sample_id}.qual.vcf.gz
 
     """
-
 }
 
-// make vcf with just variants from variant report
+// Extract mitochrondrial variants and annotate with VEP - use ensembl transcripts
 process get_mitochondrial_variant_and_annotate{
 
     cpus params.small_task_cpus
 
-    publishDir "${params.publish_dir}/mitochondrial_vcf/", mode: 'copy'
-
+    publishDir "${params.publish_dir}/annotated_mitochrondrial_vcf/", mode: 'copy'
 
     input:
     set val(id), file(normalised_vcf), file(normalised_vcf_index) from for_mito_vcf_channel
 
     output:
-    set val(id), file("${params.sequencing_run}.mito.vep.vcf.gz"), file("${params.sequencing_run}.mito.vep.vcf.gz.tbi") into mito_vcf_channel
+    set val(id), file("${params.sequencing_run}.mito.anno.vcf.gz"), file("${params.sequencing_run}.mito.anno.vcf.gz.tbi") into mito_vcf_channel
 
     """
     bcftools view -r MT $normalised_vcf > ${params.sequencing_run}.mito.vcf
@@ -361,7 +385,7 @@ process get_mitochondrial_variant_and_annotate{
     --species homo_sapiens \
     --assembly GRCh37 \
     --input_file ${params.sequencing_run}.mito.vcf.gz \
-    --output_file ${params.sequencing_run}.mito.vep.vcf \
+    --output_file ${params.sequencing_run}.mito.anno.vcf \
     --force_overwrite \
     --cache \
     --dir  $vep_cache_mt \
@@ -378,13 +402,13 @@ process get_mitochondrial_variant_and_annotate{
     --custom ${mitomap},mitomap,vcf,exact,0,AF,AC \
     --custom ${clinvar},clinvar,vcf,exact,0,CLNSIG,CLNSIGCONF
 
-    bgzip ${params.sequencing_run}.mito.vep.vcf
-    tabix ${params.sequencing_run}.mito.vep.vcf.gz
+    bgzip ${params.sequencing_run}.mito.anno.vcf
+    tabix ${params.sequencing_run}.mito.anno.vcf.gz
 
     """
 }
 
-// Create variant reports csvs
+// Create mitochondrial variant reports 
 process create_mito_variant_reports {
 
     cpus params.small_task_cpus
@@ -411,12 +435,9 @@ process create_mito_variant_reports {
     --max_mitomap_af $params.max_mitomap_af 
 
     """
-
 }
 
-
-
-// create marker once complete
+// Create marker once complete
 workflow.onComplete{
 
     if (workflow.success){
@@ -433,5 +454,4 @@ workflow.onComplete{
 
     newFile.createNewFile()
     newFile.append(ran_ok)
-
 }

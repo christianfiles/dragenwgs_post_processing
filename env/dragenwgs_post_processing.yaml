@@ -9,6 +9,7 @@ dependencies:
 - ensembl-vep = 97
 - bcftools = 1.9
 - nextflow = 19
+- slivar = 0.1.11
 - pip:
   - pandas== 0.23.4
-  - pyvariantfilter
+  - pyvariantfilter ==1.0.4
