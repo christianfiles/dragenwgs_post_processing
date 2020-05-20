@@ -255,6 +255,7 @@ if variant_df.shape[0] ==0:
 	f = open(output_name, 'w')
 	f.write(f'No variants for sample {proband_id}. Program not run.')
 	f.close()
+	exit()
 
 gt_fields = []
 
