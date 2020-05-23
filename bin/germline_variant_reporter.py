@@ -528,7 +528,7 @@ for fm in my_family.get_all_family_member_ids():
 			gt_fields.append(fm + field)
 
 
-csv_fields = ['#SampleId', 'WorklistId', 'Variant', 'Genotype', f'{proband_id}_DP', f'{proband_id}_GQ',  f'{proband_id}_AD', 'SYMBOL', 'worst_consequence', 'Consequence', 'inheritance_models',  'HGVSc', 'HGVSp', 'CLIN_SIG', 'Existing_variation', 'csq_PICK', 'info_in_panel', 'gnomad_popmax_af'] + gt_fields
+csv_fields = ['#SampleId', 'WorklistId', 'Variant', 'Genotype', f'{proband_id}_DP', f'{proband_id}_GQ',  f'{proband_id}_AD', 'SYMBOL', 'worst_consequence', 'Consequence', 'inheritance_models',  'HGVSc', 'HGVSp', 'CLIN_SIG', 'Existing_variation', 'AutoPick', 'info_in_panel', 'gnomad_popmax_af'] + gt_fields
 
 # save to file
 variant_df[csv_fields].to_csv(output_name, index=False, sep='\t')
