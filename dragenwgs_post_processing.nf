@@ -80,6 +80,7 @@ ped_channel.into{
     ped_channel_json
     ped_channel_reports
     ped_channel_reports_mito
+    ped_channel_upd
 }
 
 // Create json for qiagen upload
@@ -127,6 +128,7 @@ samples_ch.into{
     samples_ch_splitting
     samples_ch_reporting
     samples_ch_reporting_mito
+    samples_ch_upd
 }
 
 // Split multiallelics and normalise
@@ -153,6 +155,7 @@ normalised_vcf_channel.into{
     for_splitting_channel
     qiagen_vcf_channel
     for_mito_vcf_channel
+    for_upd_channel
 }
 
 // Split the normalised vcf up per chromosome for parallel processing
@@ -436,6 +439,40 @@ process create_mito_variant_reports {
 
     """
 }
+
+
+// Create UPD plots and report
+process create_upd_plots {
+
+    cpus params.small_task_cpus
+
+    publishDir "${params.publish_dir}/upd/", mode: 'copy'
+
+    input:
+    set val(id), file(vcf), file(vcf_index) from for_upd_channel
+    each sample_names from samples_ch_upd
+    file(ped) from ped_channel_upd
+
+    output:
+    file("${params.sequencing_run}.${sample_names[0]}_*") optional true into upd_channel
+
+    """
+    UPDog.py --vcf $vcf \
+    --proband_id ${sample_names[0]} \
+    --ped $ped \
+    --output ${params.sequencing_run}.${sample_names[0]} \
+    --min_dp $params.upd_min_dp \
+    --min_gq $params.upd_min_gq \
+    --min_qual $params.upd_min_qual \
+    --p_value $params.upd_p_value \
+    --block_size $params.upd_block_size \
+    --min_variants_per_block $params.upd_min_variants_per_block \
+    --min_blocks $params.upd_min_blocks \
+    --min_proportion $params.upd_min_proportion
+
+    """
+}
+
 
 // Create marker once complete
 workflow.onComplete{
