@@ -35,6 +35,52 @@ whitelist = args.whitelist[0]
 min_mt_af = args.min_mt_af[0]
 max_mitomap_af = args.max_mitomap_af[0]
 
+def fix_genotype(df, column_key):
+	"""
+	Convert genotype in format G/A to HET etc
+	"""
+
+	genotype = df[column_key]
+	variant  = df['variant_id']
+
+	alt = variant.split('>')[1]
+
+	if '/' in genotype:
+
+		genotype = genotype.split('/')
+
+	elif '|' in genotype:
+
+		genotype = genotype.split('|')
+
+	else:
+
+		raise Exception('weird genotype')
+
+	if genotype.count('.') == 2:
+
+		return 'MISSING'
+
+	elif genotype.count(alt) == 2:
+
+		return 'HOM_ALT'
+
+	elif genotype.count(alt) == 1:
+
+		return 'HET'
+
+	elif genotype.count(alt) == 0:
+
+		return 'HOM_REF'
+
+	else:
+
+		return 'UNKNOWN'
+
+
+
+
+
 
 def pathogenic_in_clinvar(clinvar_vep, clinvar_custom, clinvar_conflicting):
 	"""
@@ -105,10 +151,15 @@ def passes_initial_filter(variant, proband_id, max_mitomap, min_af):
 			
 			reads_ref = variant.get_ref_reads(proband_id) 
 			reads_alt = variant.get_alt_reads(proband_id)
+
+			# no reads
+			if (reads_ref + reads_alt) == 0:
+
+				return False
 			
 			af = reads_alt / (reads_ref + reads_alt)
 			
-			if af < max_mitomap:
+			if af < min_af:
 				
 				return False
 
@@ -119,7 +170,10 @@ def passes_initial_filter(variant, proband_id, max_mitomap, min_af):
 
 		is_path_in_clinvar = pathogenic_in_clinvar(clinvar_vep, clinvar_custom, clinvar_conflicting)
 
-		
+		if is_path_in_clinvar == True:
+
+			return True
+
 		mito_map = variant.filter_on_numerical_transcript_annotation_lte(annotation_key='mitomap_AF',
 																						  ad_het=max_mitomap,
 																						  ad_hom_alt=max_mitomap,
@@ -132,7 +186,7 @@ def passes_initial_filter(variant, proband_id, max_mitomap, min_af):
 																				   )
 		
 	
-		# If the variant is below x% and pathogenic in clinvar then keep
+		# If the variant is below x%
 		if mito_map:
 
 			return True
@@ -149,6 +203,10 @@ def get_af(df, sample_id):
 
 	ref = df[f'{sample_id}_AD'].split(',')[0]
 	alt = df[f'{sample_id}_AD'].split(',')[1]
+
+	if float(ref)+float(alt) == 0:
+
+		return 0
 
 	return round(float(alt) / (float(ref)+float(alt)), 3)
 
@@ -257,13 +315,18 @@ if variant_df.shape[0] ==0:
 	f.close()
 	exit()
 
+# convert genotype fields
+for fm in my_family.get_all_family_member_ids():
+
+	variant_df[f'{fm}_Genotype'] = variant_df.apply(fix_genotype, axis=1, args=( f'{fm}_GT',))
+
 gt_fields = []
 
 proband_id = my_family.get_proband_id()
 variant_df['#SampleId'] = proband_id
 variant_df['WorklistId'] = worklist
 variant_df['Variant'] = variant_df['variant_id']
-variant_df['Genotype'] = variant_df[f'{proband_id}_GT']
+variant_df['Genotype'] = variant_df[f'{proband_id}_Genotype']
 variant_df['SYMBOL'] = variant_df['csq_SYMBOL']
 variant_df['Feature'] = variant_df['csq_Feature']
 variant_df['Consequence'] = variant_df['csq_Consequence']
@@ -280,7 +343,7 @@ for fm in my_family.get_all_family_member_ids():
 	# ignore proband as we did it earlier
 	if fm != proband_id:
 
-		for field in ['_GT', '_DP', '_AF']:
+		for field in ['_Genotype', '_DP', '_AF']:
 
 			gt_fields.append(fm + field)
 
