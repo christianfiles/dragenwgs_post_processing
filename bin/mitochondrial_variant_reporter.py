@@ -170,10 +170,6 @@ def passes_initial_filter(variant, proband_id, max_mitomap, min_af):
 
 		is_path_in_clinvar = pathogenic_in_clinvar(clinvar_vep, clinvar_custom, clinvar_conflicting)
 
-		if is_path_in_clinvar == True:
-
-			return True
-
 		mito_map = variant.filter_on_numerical_transcript_annotation_lte(annotation_key='mitomap_AF',
 																						  ad_het=max_mitomap,
 																						  ad_hom_alt=max_mitomap,

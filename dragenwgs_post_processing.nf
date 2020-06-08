@@ -440,7 +440,6 @@ process create_mito_variant_reports {
     """
 }
 
-
 // Create UPD plots and report
 process create_upd_plots {
 

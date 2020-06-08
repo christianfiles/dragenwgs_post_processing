@@ -13,4 +13,4 @@ dependencies:
 - pip:
   - pandas== 0.23.4
   - pyvariantfilter ==1.0.4
-  - pyupdog == 1.0.1
+  - pyupdog == 1.0.2
