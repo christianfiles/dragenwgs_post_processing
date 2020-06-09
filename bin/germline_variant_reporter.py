@@ -27,7 +27,6 @@ python germline_variant_reporter.py \
     --minqual_indels $indel_qual \
     --min_dp $min_dp \
     --min_gq $min_gq \
-    --min_af_mt $min_mt_af \
     --output $output_variant_report.csv \
     --worklist $worklist_id \
     --whitelist $whitelist \
@@ -58,8 +57,8 @@ parser.add_argument('--min_dp', type=int, nargs=1, required=True,
 				help='The minimum depth for variants.')
 parser.add_argument('--min_gq', type=int, nargs=1, required=True,
 				help='The minimum GQ for variants.')
-parser.add_argument('--min_af_mt', type=float, nargs=1, required=True,
-				help='The minimum AF for MT variants - not yet implemented.')
+parser.add_argument('--max_parental_alt_ref_ratio', type=float, nargs=1, required=True,
+				help='The maximum alt / ref ratio the parent can have and still be called de novo.')
 parser.add_argument('--output', type=str, nargs=1, required=True, help='The output name')
 parser.add_argument('--worklist', type=str, nargs=1, required=True, help='Worklist ID for Audit purposes. Can be used as a comment.')
 parser.add_argument('--apply_panel', action='store_true', help='Whether to apply a virtual pannel?')
@@ -76,7 +75,7 @@ minqual_snps = args.minqual_snps[0]
 minqual_indels = args.minqual_indels[0]
 min_dp = args.min_dp[0]
 min_gq = args.min_gq[0]
-min_af_mt = args.min_af_mt[0]
+max_parental_alt_ref_ratio = args.max_parental_alt_ref_ratio[0]
 output_name = args.output[0]
 worklist = args.worklist[0]
 whitelist = args.whitelist[0]
@@ -296,7 +295,7 @@ def passes_initial_filter(variant, proband_id, gene_dict, whitelist, min_gq, min
 		
 	return False
 
-def passes_final_filter_trio(variant, compound_het_dict , inheritance, whitelist, min_gq, min_dp):
+def passes_final_filter_trio(variant, compound_het_dict , inheritance, whitelist, min_gq, min_dp ,max_parental_alt_ref_ratio):
 	"""
 	We do the filtering in 2 steps so we can work out which are comp hets.
 
@@ -349,6 +348,7 @@ def passes_final_filter_trio(variant, compound_het_dict , inheritance, whitelist
 										   min_parental_depth_dn = min_dp,
 										   min_parental_gq_upi = min_gq,
 										   min_parental_depth_upi = min_dp,
+										   max_parental_alt_ref_ratio_dn = max_parental_alt_ref_ratio
 										   ) and freq_gnomad:
 		
 		return True
@@ -466,7 +466,7 @@ if my_variant_set.family.proband_has_both_parents() == True:
 	# genuine compound het as a key.
 	my_variant_set.get_filtered_compound_hets_as_dict()
 
-	inheritance = ['uniparental_isodisomy','autosomal_reccessive','x_reccessive','x_dominant','de_novo', 'compound_het']
+	inheritance = ['uniparental_isodisomy','autosomal_reccessive','x_reccessive','de_novo', 'compound_het']
 	
 else:
 	
@@ -480,10 +480,10 @@ else:
 	inheritance = ['uniparental_isodisomy', 'autosomal_dominant', 'autosomal_reccessive','x_reccessive','x_dominant','de_novo', 'compound_het']
 
 # now apply second filtering function
-my_variant_set.filter_variants(passes_final_filter_trio, args=(my_variant_set.final_compound_hets, inheritance, white_dict, min_gq, min_dp ))
+my_variant_set.filter_variants(passes_final_filter_trio, args=(my_variant_set.final_compound_hets, inheritance, white_dict, min_gq, min_dp, max_parental_alt_ref_ratio ))
 
 # convert to pandas dataframe
-variant_df = my_variant_set.to_df(min_parental_gq_dn= min_gq, min_parental_depth_dn=min_dp, min_parental_gq_upi=min_gq, min_parental_depth_upi= min_dp)
+variant_df = my_variant_set.to_df(min_parental_gq_dn= min_gq, min_parental_depth_dn=min_dp, min_parental_gq_upi=min_gq, min_parental_depth_upi= min_dp , max_parental_alt_ref_ratio_dn=max_parental_alt_ref_ratio)
 
 # catch NTC
 if variant_df.shape[0] ==0:

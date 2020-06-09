@@ -282,7 +282,7 @@ process create_variant_reports {
     --minqual_indels $params.indel_qual \
     --min_dp $params.min_dp \
     --min_gq $params.min_gq \
-    --min_af_mt $params.min_mt_af \
+    --max_parental_alt_ref_ratio $params.max_parental_alt_ref_ratio \
     --output ${params.sequencing_run}.${sample_names[0]}_variant_report.csv \
     --worklist $params.worklist_id \
     --whitelist $whitelist \
@@ -454,6 +454,9 @@ process create_upd_plots {
 
     output:
     file("${params.sequencing_run}.${sample_names[0]}_*") optional true into upd_channel
+
+    when:
+    params.calculate_upd == true
 
     """
     UPDog.py --vcf $vcf \
