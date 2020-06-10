@@ -67,17 +67,19 @@ with open(args.pedfile[0], 'r') as csvfile:
 
 				ped_dict[family_id].append(row_dict)
 
-
+# loop through ped dict
 for family_id in ped_dict:
 
 	proband_id = None
 
+	# work out which is proband
 	for member in ped_dict[family_id]:
 
 		if 'proband' in member:
 
 			proband_id = member['id']
 
+	# decide what to call file
 	if proband_id != None:
 
 		file_name = f'{output}/{proband_id}.json'
@@ -88,23 +90,29 @@ for family_id in ped_dict:
 
 		file_name = f'{output}/{name}.json'
 
+
+	# write file
 	with open(file_name, 'w') as outfile:
+
 
 		# try and order it
 		new_ped_dict_family = []
 
+		# loop through and put proband first
 		for member in ped_dict[family_id]:
 
 			if 'proband' in member:
 
 				new_ped_dict_family.append(member)
 
+		# now add other family members
 		for member in ped_dict[family_id]:
 
 			if 'proband' not in member:
 
 				new_ped_dict_family.append(member)
 
+		# write json
 		json.dump(new_ped_dict_family, outfile)
 
 
