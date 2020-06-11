@@ -28,13 +28,21 @@ Configuration files are located in the config directory. Locations of files such
  ### Required Reference Files
 
 params.reference_genome - http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/human_g1k_v37.fasta.gz
+
 params.clinvar - https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh37/clinvar.vcf.gz
-params.vep_cache - ftp://ftp.ensembl.org/pub/release-100/variation/indexed_vep_cache/
+
+params.vep_cache - ftp://ftp.ensembl.org/pub/release-100/variation/indexed_vep_cache
+
 params.vep_cache_mt - must be ensembl transcripts - ftp://ftp.ensembl.org/pub/release-100/variation/indexed_vep_cache/
+
 params.gnotate - https://s3.amazonaws.com/slivar/gnomad.hg37.zip
+
 params.mitomap_vcf - https://www.mitomap.org/cgi-bin/polymorphisms.cgi?format=vcf
+
 params.gene_panel = config/NexteraDNAFlex/NexteraDNAFlex_virtual_panel.csv
+
 params.whitelist = config/NexteraDNAFlex/NexteraDNAFlex_whitelist.csv
+
 params.whitelist_mito = config/NexteraDNAFlex/NexteraDNAFlex_whitelist_mito.csv
 
 
