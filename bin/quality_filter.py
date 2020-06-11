@@ -54,7 +54,7 @@ if 'SNPQual' not in  myvcf.header.filters.keys():
 	myvcf.header.filters.add('SNPQual', None, None, f'An SNP variant with QUAL below {snp_qual}')
 
 if 'IndelQual' not in  myvcf.header.filters.keys():
-	myvcf.header.filters.add('SNPQual', None, None, f'An Indel variant with QUAL below {indel_qual}')
+	myvcf.header.filters.add('IndelQual', None, None, f'An Indel variant with QUAL below {indel_qual}')
 
 
 print(myvcf.header, end='')
