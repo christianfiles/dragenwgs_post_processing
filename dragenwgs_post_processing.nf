@@ -13,12 +13,13 @@ Define initial files
 */
 
 reference_genome = file(params.reference_genome)
+reference_genome_index = file(params.reference_genome_index)
 vep_cache = file(params.vep_cache)
 gene_panel = file(params.gene_panel)
 whitelist = file(params.whitelist)
 whitelist_mito = file(params.whitelist_mito)
 clinvar = file(params.clinvar)
-vep_cache_mt = file(params.vep_cache_mt )
+vep_cache_mt = file(params.vep_cache_mt)
 mitomap = file(params.mitomap_vcf)
 gnotate = file(params.gnotate)
 
@@ -138,6 +139,7 @@ process split_multiallelics_and_normalise{
 
 	input:
 	set val(id), file(vcf), file(vcf_index) from raw_vcf_annotation 
+    file(reference_genome_index)
 
 	output:
 	set val(id), file("${params.sequencing_run}.norm.vcf.gz"), file("${params.sequencing_run}.norm.vcf.gz.tbi") into normalised_vcf_channel
@@ -186,6 +188,9 @@ process annotate_with_vep{
 
     input:
     set val(chromosome), file(normalised_vcf), file(normalised_vcf_index) from for_vep_channel
+    file reference_genome_index
+    file reference_genome
+    file vep_cache
 
     output:
     file("${params.sequencing_run}.norm.${chromosome}.anno.vcf") into annotated_vcf_per_chromosome
@@ -371,6 +376,9 @@ process get_mitochondrial_variant_and_annotate{
 
     input:
     set val(id), file(normalised_vcf), file(normalised_vcf_index) from for_mito_vcf_channel
+    file reference_genome_index
+    file reference_genome
+    file vep_cache_mt
 
     output:
     set val(id), file("${params.sequencing_run}.mito.anno.vcf.gz"), file("${params.sequencing_run}.mito.anno.vcf.gz.tbi") into mito_vcf_channel
