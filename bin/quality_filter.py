@@ -38,11 +38,6 @@ min_gq = args.min_gq[0]
 
 myvcf = VariantFile(vcf, "r")
 
-
-myvcf.header.filters.add('LowAFMT', None, None, f'An MT variant with AF below {min_mt_af}')
-myvcf.header.filters.add('SNPQual', None, None, f'An SNP variant with QUAL below {snp_qual}')
-myvcf.header.filters.add('IndelQual', None, None, f'An Indel variant with QUAL below {indel_qual}')
-
 if 'LowDepth' not in myvcf.header.filters.keys():
 	myvcf.header.filters.add('LowDepth', None, None, f'A non MT variant with DP below {min_dp}')
 
@@ -51,6 +46,16 @@ if 'LowGQ' not in  myvcf.header.filters.keys():
 
 if 'lod_fstar' not in  myvcf.header.filters.keys():
 	myvcf.header.filters.add('lod_fstar', None, None, f'MT variant with low fstar {min_gq}')
+
+if 'LowAFMT' not in  myvcf.header.filters.keys():
+	myvcf.header.filters.add('LowAFMT', None, None, f'An MT variant with AF below {min_mt_af}')
+
+if 'SNPQual' not in  myvcf.header.filters.keys():
+	myvcf.header.filters.add('SNPQual', None, None, f'An SNP variant with QUAL below {snp_qual}')
+
+if 'IndelQual' not in  myvcf.header.filters.keys():
+	myvcf.header.filters.add('IndelQual', None, None, f'An Indel variant with QUAL below {indel_qual}')
+
 
 print(myvcf.header, end='')
 
@@ -115,8 +120,20 @@ for variant in myvcf:
 		else:
 
 			for filt in filters_to_add:
+				
+				if ';' in filt:
 
-				variant.filter.add(filt)
+					new_filts = filt.split(';')
+
+					for new_filt in new_filts:
+
+						
+						variant.filter.add(new_filt)
+
+				else:
+
+
+					variant.filter.add(filt)
 
 	else:
 
@@ -127,7 +144,6 @@ for variant in myvcf:
 		try:
 
 			gq = variant.samples[sampleid]['GQ']
-
 		except:
 
 			gq = 0
@@ -192,8 +208,18 @@ for variant in myvcf:
 		else:
 
 			for filt in filters_to_add:
+				
+				if ';' in filt:
 
-				variant.filter.add(filt)
+					new_filts = filt.split(';')
+					
+					for new_filt in new_filts:
+
+						variant.filter.add(filt)					
+
+				else:
+
+					variant.filter.add(filt)
 
 		
 	print (variant, end='')

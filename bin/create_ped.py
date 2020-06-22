@@ -4,6 +4,11 @@ import argparse
 import glob
 from pathlib import Path
 
+"""
+Get the variables files and make a PED file from them
+
+"""
+
 
 parser = argparse.ArgumentParser(description='Create a ped file from variables files.')
 parser.add_argument('--variables', type=str, nargs=1, required=True,

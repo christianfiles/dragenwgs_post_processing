@@ -6,9 +6,11 @@ dependencies:
 - python = 3.7
 - vt = 2015.11.10
 - vcftools = 0.1.16
-- ensembl-vep = 97
+- ensembl-vep = 100
 - bcftools = 1.9
 - nextflow = 19
+- slivar = 0.1.11
 - pip:
   - pandas== 0.23.4
-  - pyvariantfilter
+  - pyvariantfilter ==1.0.4
+  - pyupdog == 1.0.2
