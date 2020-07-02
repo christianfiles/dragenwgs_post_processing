@@ -77,11 +77,6 @@ def fix_genotype(df, column_key):
 
 		return 'UNKNOWN'
 
-
-
-
-
-
 def pathogenic_in_clinvar(clinvar_vep, clinvar_custom, clinvar_conflicting):
 	"""
 	Check multiple fields to see if pathogenic in clinvar.
@@ -163,13 +158,6 @@ def passes_initial_filter(variant, proband_id, max_mitomap, min_af):
 				
 				return False
 
-		# Coopt the get_genes() function to get the clinvar annotation VEP field.
-		clinvar_vep = variant.get_genes(feature_key='CLIN_SIG')
-		clinvar_custom = variant.get_genes('clinvar_CLNSIG')
-		clinvar_conflicting = variant.get_genes('clinvar_CLNSIGCONF')
-
-		is_path_in_clinvar = pathogenic_in_clinvar(clinvar_vep, clinvar_custom, clinvar_conflicting)
-
 		mito_map = variant.filter_on_numerical_transcript_annotation_lte(annotation_key='mitomap_AF',
 																						  ad_het=max_mitomap,
 																						  ad_hom_alt=max_mitomap,
@@ -213,7 +201,6 @@ args = parser.parse_args()
 # read ped into df
 ped_df = pd.read_csv(ped, sep='\t', names=['family_id', 'sample_id', 'paternal_id', 'maternal_id', 'sex', 'affected'])
 
-
 # read white list
 white_df = pd.read_csv(whitelist)
 white_dict = {}
@@ -237,13 +224,12 @@ sex = filtered_ped['sex'].iloc[0]
 family_ped = ped_df[ped_df['family_id'] == family_id]
 
 
-if 0 in list(family_ped['sex']):
-	print('Sex cannot be zero - not running program creating emprty file.')
+if sex =='0' or sex ==0:
 
+	print('Sex cannot be zero - not running program creating emprty file.')
 	f = open(output_name, 'w')
 	f.write(f'No sex for sample {proband_id}. Program not run.')
 	f.close()
-	# make empty file maybe?
 	exit()
 
 has_family= False
@@ -286,7 +272,6 @@ else:
 	exit()
 
 
-
 # Create a new VariantSet object
 my_variant_set = VariantSet()
 
@@ -304,7 +289,7 @@ my_variant_set.read_variants_from_vcf(vcf,
 variant_df = my_variant_set.to_df()
 
 # catch NTC
-if variant_df.shape[0] ==0:
+if variant_df.shape[0] == 0:
 
 	f = open(output_name, 'w')
 	f.write(f'No variants for sample {proband_id}. Program not run.')

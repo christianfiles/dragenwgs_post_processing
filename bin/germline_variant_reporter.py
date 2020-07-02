@@ -62,6 +62,8 @@ parser.add_argument('--max_parental_alt_ref_ratio', type=float, nargs=1, require
 parser.add_argument('--output', type=str, nargs=1, required=True, help='The output name')
 parser.add_argument('--worklist', type=str, nargs=1, required=True, help='Worklist ID for Audit purposes. Can be used as a comment.')
 parser.add_argument('--apply_panel', action='store_true', help='Whether to apply a virtual pannel?')
+parser.add_argument('--splice_ai', type=float, nargs=1, required=True,
+				help='Variants with spliceai value above this are kept in first round filter.')
 
 args = parser.parse_args()
 
@@ -80,6 +82,7 @@ output_name = args.output[0]
 worklist = args.worklist[0]
 whitelist = args.whitelist[0]
 apply_panel = args.apply_panel
+splice_ai_cutoff = args.splice_ai[0]
 
 # get maximum of both population frequencies to initially filter on. We have to do it in two stages to avoid filtering compound hets out.
 initial_af = max(gnomad_ad, gnomad_r)
@@ -169,7 +172,7 @@ def pathogenic_in_clinvar(clinvar_vep, clinvar_custom, clinvar_conflicting):
 
 	return False
 
-def passes_initial_filter(variant, proband_id, gene_dict, whitelist, min_gq, min_dp):
+def passes_initial_filter(variant, proband_id, gene_dict, whitelist, min_gq, min_dp, splice_ai_cutoff):
 	"""
 	An initial filter to 
 	
@@ -265,6 +268,14 @@ def passes_initial_filter(variant, proband_id, gene_dict, whitelist, min_gq, min
 		if freq_gnomad and is_path_in_clinvar:
 			
 			return True
+
+		if 'MaxSpliceAI' in variant.info_annotations:
+
+			splice_ai = variant.get_numerical_info_annotation('MaxSpliceAI', agg_func='max')
+
+			if splice_ai > splice_ai_cutoff and freq_gnomad:
+
+				return True
 
 		# now check worst consequence
 		csq_filter = False
@@ -394,7 +405,9 @@ sex = filtered_ped['sex'].iloc[0]
 # if any family members don't have sex set in ped
 family_ped = ped_df[ped_df['family_id'] == family_id]
 
-if 0 in list(family_ped['sex']):
+print(sex)
+
+if sex == 0 or sex == '0':
 	print('Sex cannot be zero - not running program.')
 	f = open(output_name, 'w')
 	f.write(f'Sample {proband_id} has no sex. Program not run.')
@@ -450,7 +463,7 @@ my_variant_set.add_family(my_family)
 my_variant_set.read_variants_from_vcf(vcf,
 									proband_variants_only=True,
 									filter_func=passes_initial_filter,
-									args=(proband_id, gene_dict, white_dict,min_gq, min_dp))
+									args=(proband_id, gene_dict, white_dict,min_gq, min_dp, splice_ai_cutoff))
 
 # see whether we can phase comp hets by inheritance
 if my_variant_set.family.proband_has_both_parents() == True:
@@ -516,6 +529,7 @@ variant_df['CLIN_SIG'] = variant_df['csq_CLIN_SIG']
 variant_df['Existing_variation'] = variant_df['csq_Existing_variation']
 variant_df['AutoPick'] = variant_df['csq_PICK']
 variant_df['gnomad_popmax_af'] = variant_df['info_gnomad_popmax_af']
+variant_df['splice_ai'] = variant_df['info_MaxSpliceAI']
 
 # add sample specific columns such as genotype and depth
 for fm in my_family.get_all_family_member_ids():
@@ -528,7 +542,7 @@ for fm in my_family.get_all_family_member_ids():
 			gt_fields.append(fm + field)
 
 
-csv_fields = ['#SampleId', 'WorklistId', 'Variant', 'Genotype', f'{proband_id}_DP', f'{proband_id}_GQ',  f'{proband_id}_AD', 'SYMBOL', 'worst_consequence', 'Consequence', 'inheritance_models',  'HGVSc', 'HGVSp', 'CLIN_SIG', 'Existing_variation', 'AutoPick', 'info_in_panel', 'gnomad_popmax_af'] + gt_fields
+csv_fields = ['#SampleId', 'WorklistId', 'Variant', 'Genotype', f'{proband_id}_DP', f'{proband_id}_GQ',  f'{proband_id}_AD', 'SYMBOL', 'worst_consequence', 'Consequence', 'inheritance_models',  'HGVSc', 'HGVSp', 'CLIN_SIG', 'Existing_variation', 'AutoPick', 'info_in_panel', 'gnomad_popmax_af', 'splice_ai'] + gt_fields
 
 # save to file
 variant_df[csv_fields].to_csv(output_name, index=False, sep='\t')

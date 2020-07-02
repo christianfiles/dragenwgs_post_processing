@@ -35,7 +35,9 @@ params.vep_cache - ftp://ftp.ensembl.org/pub/release-100/variation/indexed_vep_c
 
 params.vep_cache_mt - must be ensembl transcripts - ftp://ftp.ensembl.org/pub/release-100/variation/indexed_vep_cache/
 
-params.gnotate - https://s3.amazonaws.com/slivar/gnomad.hg37.zip
+params.gnotate_gnomad - https://s3.amazonaws.com/slivar/gnomad.hg37.zip
+
+params.gnotate_spliceai - https://s3.amazonaws.com/slivar/spliceai.hg37.zip
 
 params.mitomap_vcf - https://www.mitomap.org/cgi-bin/polymorphisms.cgi?format=vcf
 
@@ -77,4 +79,9 @@ To run using docker:
 nextflow -C config/NexteraDNAFlex/NexteraDNAFlex_local_docker.config run dragenwgs_post_processing.nf -resume
 ```
 
+Test
 
+```
+nextflow -C config/NexteraDNAFlex/NexteraDNAFlex_local_test.config run dragenwgs_post_processing.nf -resume
+
+```
