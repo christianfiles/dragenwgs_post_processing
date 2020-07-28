@@ -201,6 +201,8 @@ args = parser.parse_args()
 # read ped into df
 ped_df = pd.read_csv(ped, sep='\t', names=['family_id', 'sample_id', 'paternal_id', 'maternal_id', 'sex', 'affected'])
 
+print (ped_df)
+
 # read white list
 white_df = pd.read_csv(whitelist)
 white_dict = {}
@@ -209,7 +211,7 @@ for row in white_df.itertuples():
 	
 	white_dict[f'{row.chrom}:{row.pos}'] = f'{row.chrom}:{row.pos}'
 
-
+print (proband_id)
 # have we got a singleton or a family?
 filtered_ped = ped_df[ped_df['sample_id']==proband_id]
 
@@ -224,7 +226,7 @@ sex = filtered_ped['sex'].iloc[0]
 family_ped = ped_df[ped_df['family_id'] == family_id]
 
 
-if sex =='0' or sex ==0:
+if sex =='0' or sex == 0:
 
 	print('Sex cannot be zero - not running program creating emprty file.')
 	f = open(output_name, 'w')
@@ -232,20 +234,17 @@ if sex =='0' or sex ==0:
 	f.close()
 	exit()
 
-has_family= False
+has_family= True
 
-if family_id != '0':
+if family_id == '0' or family_id == 0:
 	
-	has_family = True
+	has_family = False
 	
 is_affected = False
 	
 if affected == 2:
 	
 	is_affected = True
-
-
-# create family object
 
 # if we have a family and sample is affected
 if has_family == True and is_affected == True:

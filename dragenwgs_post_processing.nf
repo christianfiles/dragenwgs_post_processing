@@ -48,6 +48,13 @@ raw_vcf.into{
 }
 
 
+variables_channel.into{
+	variables_channel_ped
+	variables_channel_variant_report
+	variables_channel_mito_variant_report
+}
+
+
 // Chromosomes for when we do VEP in parallel
 chromosome_ch = Channel.from('1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', 'X', 'Y', 'MT' )
 
@@ -66,7 +73,7 @@ process create_ped {
 	publishDir "${params.publish_dir}/ped/", mode: 'copy'
 
 	input:
-	file(variables) from variables_channel.collect()
+	file(variables) from variables_channel_ped.collect()
 
 	output:
 	file("${params.sequencing_run}.ped") into ped_channel
@@ -96,7 +103,7 @@ process create_json_for_qiagen {
 	file(ped) from ped_channel_json
 
 	output:
-	file('*.json') 
+	file('*.json')
 
 	"""
 	convert_ped_to_json.py --pedfile $ped --seqid $params.sequencing_run --output ./
@@ -141,6 +148,7 @@ process split_multiallelics_and_normalise{
 	input:
 	set val(id), file(vcf), file(vcf_index) from raw_vcf_annotation 
 	file(reference_genome_index)
+	file(gnotate_spliceai)
 
 	output:
 	set val(id), file("${params.sequencing_run}.norm.vcf.gz"), file("${params.sequencing_run}.norm.vcf.gz.tbi") into normalised_vcf_channel
@@ -277,11 +285,15 @@ process create_variant_reports {
 	set file(vcf), file(vcf_index) from annotated_vcf
 	each sample_names from samples_ch_reporting_mito
 	file(ped) from ped_channel_reports
+	file(variables) from variables_channel_variant_report.collect()
 
 	output:
 	file("${params.sequencing_run}.${sample_names[0]}_variant_report.csv") into variant_report_channel
 
 	"""
+
+	. ${sample_names[0]}.variables
+
 	germline_variant_reporter.py \
 	--vcf $vcf \
 	--proband_id ${sample_names[0]} \
@@ -295,7 +307,7 @@ process create_variant_reports {
 	--min_gq $params.min_gq \
 	--max_parental_alt_ref_ratio $params.max_parental_alt_ref_ratio \
 	--output ${params.sequencing_run}.${sample_names[0]}_variant_report.csv \
-	--worklist $params.worklist_id \
+	--worklist \$workList \
 	--whitelist $whitelist \
 	--splice_ai $params.splice_ai_cutoff \
 	--apply_panel 
@@ -386,6 +398,7 @@ process get_mitochondrial_variant_and_annotate{
 	file reference_genome_index
 	file vep_cache_mt
 
+
 	output:
 	set val(id), file("${params.sequencing_run}.mito.anno.vcf.gz"), file("${params.sequencing_run}.mito.anno.vcf.gz.tbi") into mito_vcf_channel
 
@@ -431,22 +444,26 @@ process create_mito_variant_reports {
 	cpus params.small_task_cpus
 
 	publishDir "${params.publish_dir}/variant_reports_mitochondrial/", mode: 'copy'
+	publishDir "${params.publish_dir}/variant_reports_mitochondrial/", mode: 'copy', pattern: '.command.*', saveAs: { filename -> "${sample_names[0]}_$filename" }
 
 	input:
 	set val(id), file(vcf), file(vcf_index) from mito_vcf_channel
 	each sample_names from samples_ch_reporting
 	file(ped) from ped_channel_reports_mito
+	file(variables) from variables_channel_mito_variant_report.collect()
 
 	output:
 	file("${params.sequencing_run}.${sample_names[0]}_variant_report_mito.csv") into variant_report_mito_channel
 
 	"""
+	. ${sample_names[0]}.variables
+	
 	mitochondrial_variant_reporter.py \
 	--vcf $vcf \
 	--proband_id ${sample_names[0]} \
 	--ped $ped \
 	--output ${params.sequencing_run}.${sample_names[0]}_variant_report_mito.csv \
-	--worklist $params.worklist_id \
+	--worklist \$workList \
 	--whitelist $whitelist_mito \
 	--min_mt_af $params.min_mt_af \
 	--max_mitomap_af $params.max_mitomap_af 
@@ -498,9 +515,14 @@ process test_pipeline {
 
 	cpus params.small_task_cpus
 
+	publishDir "${params.publish_dir}/test_results/", mode: 'copy'
+
 	input:
 	file(variant_report) from variant_report_channel_testing
 	file(mt_variant_report) from variant_report_mito_channel_testing
+
+	output:
+	file 'test_report.txt'
 
 	when:
 	params.testing == true
@@ -508,7 +530,7 @@ process test_pipeline {
 	"""
 	tests.py \
 	--variant_report $variant_report \
-	--mt_variant_report $mt_variant_report
+	--mt_variant_report $mt_variant_report > test_report.txt
 	"""
 }
 

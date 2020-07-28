@@ -414,11 +414,11 @@ if sex == 0 or sex == '0':
 	f.close()
 	exit()
 
-has_family= False
+has_family = True
 
-if family_id != '0':
+if family_id == '0' or family_id == 0:
 	
-	has_family = True
+	has_family = False
 	
 is_affected = False
 	
