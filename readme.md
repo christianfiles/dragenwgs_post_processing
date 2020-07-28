@@ -47,6 +47,20 @@ params.whitelist = config/NexteraDNAFlex/NexteraDNAFlex_whitelist.csv
 
 params.whitelist_mito = config/NexteraDNAFlex/NexteraDNAFlex_whitelist_mito.csv
 
+### Variables Files
+
+Sample specific configuration variables are stored in variables files. For an example of this see the test/variables directory.
+
+Required variables are:
+
+workList=test_worklist
+sampleId=NA12878i
+familyId=FAM001
+phenotype=2
+sex=1
+paternalId=NA12891
+maternalId=NA12892
+
 
 ## Run
 
@@ -82,6 +96,6 @@ nextflow -C config/NexteraDNAFlex/NexteraDNAFlex_local_docker.config run dragenw
 Test
 
 ```
-nextflow -C config/NexteraDNAFlex/NexteraDNAFlex_local_test.config run dragenwgs_post_processing.nf -resume
+nextflow -C config/NexteraDNAFlex/NexteraDNAFlex_pbs_test.config run dragenwgs_post_processing.nf -resume
 
 ```
