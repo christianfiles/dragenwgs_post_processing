@@ -140,7 +140,7 @@ samples_ch.into{
 	samples_ch_upd
 }
 
-// Split multiallelics and normalise also annotate with spliceai
+// Split multiallelics and normalise also annotate with spliceai + gnomad
 process split_multiallelics_and_normalise{
 
 	cpus params.vcf_processing_cpus
@@ -158,7 +158,12 @@ process split_multiallelics_and_normalise{
 	bgzip ${params.sequencing_run}.norm.inter.vcf
 	tabix ${params.sequencing_run}.norm.inter.vcf.gz
 
-	slivar expr --gnotate $gnotate_spliceai -o ${params.sequencing_run}.norm.vcf -v ${params.sequencing_run}.norm.inter.vcf.gz
+	slivar expr --gnotate $gnotate_spliceai -o ${params.sequencing_run}.norm.inter2.vcf -v ${params.sequencing_run}.norm.inter.vcf.gz
+
+	bgzip ${params.sequencing_run}.norm.inter2.vcf
+	tabix ${params.sequencing_run}.norm.inter2.vcf.gz
+
+	slivar expr --gnotate $gnotate_gnomad -o ${params.sequencing_run}.norm.vcf -v ${params.sequencing_run}.norm.inter2.vcf.gz
 
 	bgzip ${params.sequencing_run}.norm.vcf
 	tabix ${params.sequencing_run}.norm.vcf.gz
@@ -195,7 +200,7 @@ process split_vcf_per_chromosome{
 	"""
 }
 
-// Annotate using VEP and slivar for gnomad
+// Annotate using VEP 
 process annotate_with_vep_and_gnomad{
 
 	cpus params.vep_cpus
@@ -230,7 +235,7 @@ process annotate_with_vep_and_gnomad{
 	--species homo_sapiens \
 	--assembly GRCh37 \
 	--input_file $normalised_vcf \
-	--output_file ${params.sequencing_run}.norm.${chromosome}.vep.vcf \
+	--output_file ${params.sequencing_run}.norm.${chromosome}.anno.vcf \
 	--force_overwrite \
 	--cache \
 	--dir  $vep_cache \
@@ -245,11 +250,6 @@ process annotate_with_vep_and_gnomad{
 	--pick_order biotype,canonical,appris,tsl,ccds,rank,length \
 	--exclude_predicted \
 	--custom ${clinvar},clinvar,vcf,exact,0,CLNSIG,CLNSIGCONF
-
-	bgzip ${params.sequencing_run}.norm.${chromosome}.vep.vcf
-	tabix ${params.sequencing_run}.norm.${chromosome}.vep.vcf.gz
-
-	slivar expr --gnotate $gnotate_gnomad -o ${params.sequencing_run}.norm.${chromosome}.anno.vcf -v ${params.sequencing_run}.norm.${chromosome}.vep.vcf.gz
 
 	"""
 }
@@ -266,7 +266,9 @@ process merge_annotated_vcfs{
 	set file("${params.sequencing_run}.norm.anno.vcf.gz"), file("${params.sequencing_run}.norm.anno.vcf.gz.tbi") into annotated_vcf
 
 	"""
-	bcftools concat ${vcfs.collect { "$it " }.join()} | bcftools sort > ${params.sequencing_run}.norm.anno.vcf
+	bcftools concat ${vcfs.collect { "$it " }.join()} > ${params.sequencing_run}.norm.anno.unsorted.vcf
+
+	bcftools sort ${params.sequencing_run}.norm.anno.unsorted.vcf > ${params.sequencing_run}.norm.anno.vcf
 
 	bgzip ${params.sequencing_run}.norm.anno.vcf
 	tabix ${params.sequencing_run}.norm.anno.vcf.gz
@@ -307,7 +309,7 @@ process create_variant_reports {
 	--min_gq $params.min_gq \
 	--max_parental_alt_ref_ratio $params.max_parental_alt_ref_ratio \
 	--output ${params.sequencing_run}.${sample_names[0]}_variant_report.csv \
-	--worklist \$workList \
+	--worklist \$worklistId \
 	--whitelist $whitelist \
 	--splice_ai $params.splice_ai_cutoff \
 	--apply_panel 
@@ -463,7 +465,7 @@ process create_mito_variant_reports {
 	--proband_id ${sample_names[0]} \
 	--ped $ped \
 	--output ${params.sequencing_run}.${sample_names[0]}_variant_report_mito.csv \
-	--worklist \$workList \
+	--worklist \$worklistId \
 	--whitelist $whitelist_mito \
 	--min_mt_af $params.min_mt_af \
 	--max_mitomap_af $params.max_mitomap_af 
