@@ -233,6 +233,7 @@ process annotate_with_vep_and_gnomad{
 	--check_existing \
 	--fork $params.vep_cpus \
 	--species homo_sapiens \
+	--clin_sig_allele 0 \
 	--assembly GRCh37 \
 	--input_file $normalised_vcf \
 	--output_file ${params.sequencing_run}.norm.${chromosome}.anno.vcf \
