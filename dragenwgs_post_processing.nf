@@ -250,7 +250,7 @@ process annotate_with_vep_and_gnomad{
 	--flag_pick \
 	--pick_order biotype,canonical,appris,tsl,ccds,rank,length \
 	--exclude_predicted \
-	--custom ${clinvar},clinvar,vcf,exact,0,CLNSIG,CLNSIGCONF
+	--custom ${clinvar},clinvar,vcf,overlap,0,CLNSIG,CLNSIGCONF
 
 	"""
 }

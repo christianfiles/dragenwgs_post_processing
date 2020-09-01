@@ -20,6 +20,10 @@ variant_report = args.variant_report[0]
 mt_variant_report = args.mt_variant_report[0]
 
 expected_variants = {
+	'2:167060869C>A': 'compound_het',
+	'2:167144946C>A': 'compound_het',
+	'15:23890978G>A': '',
+	'22:37538526A>G': 'autosomal_reccessive',
 	'15:89865989C>G': 'compound_het',
 	'15:89870432C>T': 'compound_het',
 	'4:56878134G>GA': 'compound_het',
@@ -34,7 +38,12 @@ expected_variants = {
 	'12:48370516T>A': 'autosomal_dominant|de_novo',
 	'5:125882068C>G': 'compound_het',
 	'5:125903988C>G': 'compound_het',
-	'X:153296882G>A': 'x_reccessive'}
+	'X:153296882G>A': 'x_reccessive'
+
+
+
+
+	}
 
 expected_variants_mt ={
 	'MT:8356T>C': 'mitochrondrial',
