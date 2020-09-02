@@ -37,7 +37,7 @@ expected_variants = {
 	'17:56293449C>T': 'compound_het',
 	'12:48370516T>A': 'autosomal_dominant|de_novo',
 	'5:125882068C>G': 'compound_het',
-	'5:125903988C>G': 'compound_het',
+	'5:125903988C>T': 'compound_het',
 	'X:153296882G>A': 'x_reccessive'
 
 

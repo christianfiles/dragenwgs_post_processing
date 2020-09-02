@@ -230,10 +230,10 @@ process annotate_with_vep_and_gnomad{
 	--appris \
 	--gene \
 	--variant_class \
+	--clin_sig_allele 0 \
 	--check_existing \
 	--fork $params.vep_cpus \
 	--species homo_sapiens \
-	--clin_sig_allele 0 \
 	--assembly GRCh37 \
 	--input_file $normalised_vcf \
 	--output_file ${params.sequencing_run}.norm.${chromosome}.anno.vcf \
@@ -250,7 +250,7 @@ process annotate_with_vep_and_gnomad{
 	--flag_pick \
 	--pick_order biotype,canonical,appris,tsl,ccds,rank,length \
 	--exclude_predicted \
-	--custom ${clinvar},clinvar,vcf,overlap,0,CLNSIG,CLNSIGCONF
+	--custom ${clinvar},clinvar,vcf,exact,0,CLNSIG,CLNSIGCONF
 
 	"""
 }
