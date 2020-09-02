@@ -269,7 +269,7 @@ process merge_annotated_vcfs{
 	"""
 	bcftools concat ${vcfs.collect { "$it " }.join()} > ${params.sequencing_run}.norm.anno.unsorted.vcf
 
-	bcftools sort -T ./ ${params.sequencing_run}.norm.anno.unsorted.vcf > ${params.sequencing_run}.norm.anno.vcf
+	bcftools sort -T $params.tmp_dir ${params.sequencing_run}.norm.anno.unsorted.vcf > ${params.sequencing_run}.norm.anno.vcf
 
 	bgzip ${params.sequencing_run}.norm.anno.vcf
 	tabix ${params.sequencing_run}.norm.anno.vcf.gz
