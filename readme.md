@@ -96,6 +96,6 @@ nextflow -C config/NexteraDNAFlex/NexteraDNAFlex_local_docker.config run dragenw
 Test
 
 ```
-nextflow -C config/NexteraDNAFlex/NexteraDNAFlex_pbs_test.config run dragenwgs_post_processing.nf -resume
+nextflow -E -C config/NexteraDNAFlex/NexteraDNAFlex_pbs_test.config run dragenwgs_post_processing.nf
 
 ```
