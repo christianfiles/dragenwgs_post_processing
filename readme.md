@@ -35,7 +35,9 @@ params.vep_cache - ftp://ftp.ensembl.org/pub/release-100/variation/indexed_vep_c
 
 params.vep_cache_mt - must be ensembl transcripts - ftp://ftp.ensembl.org/pub/release-100/variation/indexed_vep_cache/
 
-params.gnotate - https://s3.amazonaws.com/slivar/gnomad.hg37.zip
+params.gnotate_gnomad - https://s3.amazonaws.com/slivar/gnomad.hg37.zip
+
+params.gnotate_spliceai - https://s3.amazonaws.com/slivar/spliceai.hg37.zip
 
 params.mitomap_vcf - https://www.mitomap.org/cgi-bin/polymorphisms.cgi?format=vcf
 
@@ -44,6 +46,20 @@ params.gene_panel = config/NexteraDNAFlex/NexteraDNAFlex_virtual_panel.csv
 params.whitelist = config/NexteraDNAFlex/NexteraDNAFlex_whitelist.csv
 
 params.whitelist_mito = config/NexteraDNAFlex/NexteraDNAFlex_whitelist_mito.csv
+
+### Variables Files
+
+Sample specific configuration variables are stored in variables files. For an example of this see the test/variables directory.
+
+Required variables are:
+
+workList=test_worklist
+sampleId=NA12878i
+familyId=FAM001
+phenotype=2
+sex=1
+paternalId=NA12891
+maternalId=NA12892
 
 
 ## Run
@@ -77,4 +93,9 @@ To run using docker:
 nextflow -C config/NexteraDNAFlex/NexteraDNAFlex_local_docker.config run dragenwgs_post_processing.nf -resume
 ```
 
+Test
 
+```
+nextflow -E -C config/NexteraDNAFlex/NexteraDNAFlex_pbs_test.config run dragenwgs_post_processing.nf
+
+```

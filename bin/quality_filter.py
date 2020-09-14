@@ -74,8 +74,22 @@ for variant in myvcf:
 		# clear existing filters
 		variant.filter.clear()
 
-		ft = variant.samples[sampleid]['FT']
-		af  = variant.samples[sampleid]['AF']
+
+		if 'FT' in variant.samples[sampleid]:
+
+			ft = variant.samples[sampleid]['FT']
+
+		else:
+			
+			ft = 'PASS'
+
+		if 'AF' in variant.samples[sampleid]:
+
+			af  = variant.samples[sampleid]['AF']
+
+		else:
+
+			af = [1.0]
 
 		# if it is multiallelic loop through and check if any are over the threshold
 		if len(af) >1:
