@@ -25,6 +25,18 @@ source activate dragenwgs_post_processing
 
 Configuration files are located in the config directory. Locations of files such as reference genome will need to be edited to get pipeline to work.
 
+## Install UTRannotator plugin for VEP
+
+```
+Download the UTRannotation repos from GitHub (https://github.com/ImperialCardioGenetics/UTRannotator#installation)
+Add this to .bash_profile: export PERL5LIB=$PERL5LIB:/export/home/$USER/UTRannotator-master
+
+Run vep with UTRannotator:
+vep --cache --dir /share/data/db/human/vep/refseq37_v100/ --fasta /state/partition1/db/human/gatk/2.8/b37/human_g1k_v37.fasta --offline --cache_version 100 --species homo_sapiens --assembly GRCh37 --input_file /path/to/vcf --output_file vcfFile.vcf --vcf --refseq --plugin UTRannotator,uORF_starts_ends_GRCh37_PUBLIC.txt
+
+
+```
+
  ### Required Reference Files
 
 params.reference_genome - http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/human_g1k_v37.fasta.gz
